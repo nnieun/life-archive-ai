@@ -1,20 +1,45 @@
-# Database
-data/db/
-
-# Chroma
-data/indexes/
-
-# Generated files
-data/processed/
-data/exports/
-
-# Environment
+# Environment and secrets
 .env
+.env.*
+!.env.example
 
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 .venv/
 
-# (선택) 원본 데이터가 개인 데이터라면
-data/raw/transcripts/
+# Raw personal transcripts (immutable and never committed)
+data/raw/*
+!data/raw/upload_manifest.jsonl
+!data/raw/transcripts/
+data/raw/transcripts/*
+!data/raw/transcripts/.gitkeep
+
+# SQLite databases
+data/db/*
+!data/db/.gitkeep
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Generated and exported data
+data/processed/*
+!data/processed/.gitkeep
+data/exports/*
+!data/exports/.gitkeep
+
+# Rebuildable retrieval indexes
+data/indexes/*
+!data/indexes/chroma/
+!data/indexes/bm25/
+data/indexes/chroma/*
+!data/indexes/chroma/.gitkeep
+data/indexes/bm25/*
+!data/indexes/bm25/.gitkeep
