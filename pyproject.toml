@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "life-archive-ai"
+version = "0.0.0"
+description = "Memory-centric RAG for grounded life archive retrieval"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "chromadb>=1.0,<2",
+    "fastapi>=0.115,<1",
+    "httpx>=0.28,<1",
+    "langchain>=1.0,<2",
+    "langchain-chroma>=1.0,<2",
+    "langchain-community>=0.4,<1",
+    "langchain-core>=1.0,<2",
+    "langchain-openai>=1.0,<2",
+    "langgraph>=1.0,<2",
+    "duckduckgo-search>=8.0,<9",
+    "pypdf>=6.0,<7",
+    "pydantic>=2.10,<3",
+    "python-dotenv>=1.0,<2",
+    "rank-bm25>=0.2.2,<1",
+    "streamlit>=1.42,<2",
+    "uvicorn>=0.34,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3,<10",
+]
+
+[tool.setuptools]
+packages = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

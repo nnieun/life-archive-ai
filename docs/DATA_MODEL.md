@@ -71,10 +71,29 @@ class Transcript(BaseModel):
 
     filename: str
 
-    created_at: datetime
+    recording_id: str | None
 
-    content: str
+    language: str | None
+
+    source_type: str
+
+    uploaded_at: datetime
+
+    recorded_at: datetime | None
+
+    content_hash: str
+
+    raw_content: str
+
+    normalized_content: str
 ```
+
+`uploaded_at` records ingestion time. `recorded_at` is source recording metadata.
+Neither field is treated as the remembered event date. Event dates are extracted
+later into structured Memory records and may remain unknown.
+
+The raw content is preserved exactly as decoded from UTF-8. Normalized content is
+stored separately for downstream processing.
 
 SQLite Table
 
@@ -87,9 +106,21 @@ transcript_id
 
 filename
 
-created_at
+recording_id
 
-content
+language
+
+source_type
+
+uploaded_at
+
+recorded_at
+
+content_hash
+
+raw_content
+
+normalized_content
 ```
 
 ---

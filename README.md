@@ -145,18 +145,37 @@ tests/
 
 ---
 
+# Development Setup
+
+Python 3.13 and PowerShell are required.
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
+Copy-Item .env.example .env
+pytest
+```
+
+Keep `.env` local and never commit API keys or personal transcript data.
+
+---
+
 # Running
 
 ## Backend
 
-```bash
-uvicorn backend.app.main:app --reload
+```powershell
+.\scripts\run_backend.ps1
 ```
+
+Health check: `GET http://127.0.0.1:8000/api/v1/health`
 
 ## Frontend
 
-```bash
-streamlit run frontend/app.py
+```powershell
+.\scripts\run_frontend.ps1
 ```
 
 ---
@@ -176,6 +195,19 @@ Evaluation metrics
 - Retrieval Accuracy
 - Citation Accuracy
 - Response Time
+
+---
+
+# Dataset Inspection
+
+Inspect transcript structure without copying raw text into the report:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\inspect_data.py
+```
+
+See `docs/DATA_INPUT_RULES.md` for the accepted loader input contract and the
+current dataset exceptions.
 
 ---
 
