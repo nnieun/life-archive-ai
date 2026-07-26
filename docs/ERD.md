@@ -103,6 +103,8 @@ erDiagram
 - Transcript `content_hash` is unique and prevents duplicate ingestion.
 - Segment indexes are unique within a transcript.
 - Offsets are non-negative and `end_offset >= start_offset`.
+- Segment offsets are half-open ranges into normalized transcript content;
+  persisted segment content must equal the referenced source slice.
 - JSON values are stored as TEXT, checked with SQLite `json_valid`, and validated
   with Pydantic before writes and after reads.
 - Memory status is restricted to `active`, `corrected`, or `deleted`.

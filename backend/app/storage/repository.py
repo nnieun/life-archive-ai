@@ -240,6 +240,68 @@ class SQLiteRepository:
         rows = self.list_segments(segment.transcript_id)
         return next(row for row in rows if row.segment_id == segment.segment_id)
 
+    def create_segments(
+        self,
+        segments: list[TranscriptSegmentCreate],
+    ) -> list[TranscriptSegmentRecord]:
+        """Persist one transcript's chunks atomically in chunk order."""
+        if not segments:
+            return []
+
+        transcript_ids = {segment.transcript_id for segment in segments}
+        if len(transcript_ids) != 1:
+            raise StorageIntegrityError(
+                "A segment batch must belong to one transcript"
+            )
+        transcript_id = next(iter(transcript_ids))
+        transcript = self.get_transcript(transcript_id)
+        if transcript is None:
+            raise StorageIntegrityError("Segments require an active transcript")
+
+        expected_indexes = list(range(len(segments)))
+        actual_indexes = [segment.chunk_index for segment in segments]
+        if actual_indexes != expected_indexes:
+            raise StorageIntegrityError(
+                "Segment chunk indexes must be contiguous and ordered"
+            )
+        for segment in segments:
+            expected_content = transcript.normalized_content[
+                segment.start_offset : segment.end_offset
+            ]
+            if segment.content != expected_content:
+                raise StorageIntegrityError(
+                    "Segment content must match its transcript offset range"
+                )
+
+        timestamp = _now_iso()
+        values = [
+            (
+                segment.segment_id,
+                segment.transcript_id,
+                segment.chunk_index,
+                segment.content,
+                segment.start_offset,
+                segment.end_offset,
+                timestamp,
+                timestamp,
+            )
+            for segment in segments
+        ]
+        try:
+            with self._database.transaction() as connection:
+                connection.executemany(
+                    """
+                    INSERT INTO transcript_segments (
+                        segment_id, transcript_id, chunk_index, content,
+                        start_offset, end_offset, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    values,
+                )
+        except sqlite3.IntegrityError as exception:
+            raise _translate_integrity(exception) from exception
+        return self.list_segments(transcript_id)
+
     def list_segments(
         self,
         transcript_id: str,

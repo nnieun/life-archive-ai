@@ -138,7 +138,7 @@ Each transcript is divided into chunks.
 ```python
 class Chunk(BaseModel):
 
-    chunk_id: str
+    segment_id: str
 
     transcript_id: str
 
@@ -270,6 +270,22 @@ class MemorySource(BaseModel):
 
     end_offset: int
 ```
+
+`start_offset` is inclusive and `end_offset` is exclusive. Both offsets refer
+to `Transcript.normalized_content`, and every persisted chunk must satisfy:
+
+```python
+chunk.content == transcript.normalized_content[
+    chunk.start_offset:chunk.end_offset
+]
+```
+
+The fixed-size chunker supports character units by default and
+whitespace-delimited token units when explicitly selected. Validated
+`chunk_size` and `chunk_overlap` settings ensure overlap is smaller than the
+chunk size. Initial comparison sizes are 256, 512, and 1024 units.
+Event-aware chunking is recorded as a later evaluation candidate and is not
+used to infer event boundaries during deterministic ingestion.
 
 SQLite table: `memory_sources`.
 
