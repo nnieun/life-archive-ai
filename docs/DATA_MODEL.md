@@ -121,6 +121,12 @@ content_hash
 raw_content
 
 normalized_content
+
+created_at
+
+updated_at
+
+deleted_at
 ```
 
 ---
@@ -163,6 +169,12 @@ content
 start_offset
 
 end_offset
+
+created_at
+
+updated_at
+
+deleted_at
 ```
 
 ---
@@ -215,6 +227,14 @@ event_date
 confidence
 
 status
+
+supersedes_memory_id
+
+created_at
+
+updated_at
+
+deleted_at
 ```
 
 Status
@@ -224,6 +244,34 @@ Status
 - corrected
 
 - deleted
+
+`people` is serialized to `people_json` TEXT and validated as `list[str]` by
+Pydantic. Deleted memories remain stored but are excluded from default queries.
+
+---
+
+# 5.1 Memory Source Model
+
+Memory evidence is stored separately so every structured memory remains
+traceable to transcript offsets and, when available, one segment.
+
+```python
+class MemorySource(BaseModel):
+
+    memory_source_id: str
+
+    memory_id: str
+
+    transcript_id: str
+
+    segment_id: str | None
+
+    start_offset: int
+
+    end_offset: int
+```
+
+SQLite table: `memory_sources`.
 
 ---
 
@@ -301,6 +349,9 @@ conversation_sessions
 conversation_messages
 ```
 
+Conversation message citations are stored as JSON TEXT and validated as a list
+of typed citation records before writing and after reading.
+
 ---
 
 # 9. Autobiography Model
@@ -341,7 +392,16 @@ title
 content_json
 
 created_at
+
+updated_at
+
+status
+
+deleted_at
 ```
+
+Autobiography content is JSON TEXT validated by Pydantic. MVP content is limited
+to at most three typed chapters.
 
 ---
 
