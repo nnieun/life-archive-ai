@@ -456,6 +456,15 @@ deleted_at
 Autobiography content is JSON TEXT validated by Pydantic. MVP content is limited
 to at most three typed chapters.
 
+Generation first stores an empty `draft`. Each chapter is produced as
+structured paragraphs with one or more supporting `memory_id` values. After
+verification, those IDs are converted to `CitationRecord` values and the
+accumulated chapter list is written back to `content_json`. Only a fully
+verified requested chapter set changes the status to `completed`.
+
+If a chapter still fails after one revision, the unverified chapter is not
+stored. Any earlier verified chapters remain available in the draft.
+
 ---
 
 # 10. LangChain Document

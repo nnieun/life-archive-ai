@@ -256,6 +256,19 @@ Corrected memories replace the records they supersede, deleted memories are
 excluded, and every returned event includes SQLite-backed transcript offsets.
 The timeline is a normal Python service and does not use LangGraph or an LLM.
 
+## Grounded Autobiography
+
+`POST /api/v1/autobiographies` generates one to three chapters from retrieved
+memories. LangGraph plans the chapters, writes one chapter at a time, verifies
+every cited paragraph, and allows at most one revision per chapter. Verified
+chapters are saved immediately as a SQLite draft; the record becomes
+`completed` only after every requested chapter passes verification.
+
+Every paragraph carries SQLite-backed transcript offsets. Unsupported creative
+detail, dialogue, emotion, or false date precision is rejected. A failed final
+review leaves only previously verified chapters in the draft. Stored results
+can be read with `GET /api/v1/autobiographies/{autobiography_id}`.
+
 ---
 
 # Future Work

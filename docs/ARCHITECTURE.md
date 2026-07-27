@@ -532,37 +532,25 @@ Rewrite
 
 ## Autobiography Graph
 
-```mermaid
-flowchart LR
-
-START
-
---> Retrieve Memories
-
-Retrieve Memories
-
---> Timeline
-
-Timeline
-
---> Chapter Planning
-
-Chapter Planning
-
---> Chapter Writing
-
-Chapter Writing
-
---> Verification
-
-Verification
-
---> Save
-
-Save
-
---> END
+```text
+analyze_request
+  -> retrieve_memories
+  -> build_timeline
+  -> create_chapter_plan (1 to 3 chapters)
+  -> write_chapter
+  -> verify_chapter
+     -> pass: save_chapter -> next chapter
+     -> fail: revise_once -> verify_chapter
+        -> second failure: stop with verified draft only
+  -> assemble_autobiography
+  -> mark completed
 ```
+
+Every generated paragraph names its supporting `memory_id` values. Application
+code rejects citations outside the chapter plan, resolves accepted IDs to
+SQLite source offsets, and saves only verified chapters. Each successful
+chapter update persists the accumulated draft; final assembly changes status
+to `completed` only after every requested chapter passes.
 
 ---
 
@@ -591,17 +579,31 @@ AutobiographyState
 ```text
 request
 
+retrieval_query
+
+target_period
+
+target_topics
+
+retrieved_memory_ids
+
 timeline
 
 chapter_plan
 
-current_chapter
+current_chapter_index
 
-draft
+chapter_drafts
 
 review_result
 
-final_book
+citations
+
+final_content
+
+retry_count
+
+error
 ```
 
 ---
@@ -669,6 +671,11 @@ citations, validation result, and bounded retry count.
 `POST /api/v1/timeline` accepts optional inclusive ISO `start_date` and
 `end_date` values. The response separates chronologically sorted `events` from
 `undated_events`, and every event contains source citations.
+
+`POST /api/v1/autobiographies` accepts a title, generation request, optional
+period and topics, and a chapter count from one to three. It returns the
+persisted draft or completed autobiography plus retrieval and validation
+status. `GET /api/v1/autobiographies/{id}` reads the stored result.
 
 ---
 
