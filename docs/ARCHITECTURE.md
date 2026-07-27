@@ -191,6 +191,12 @@ Timeline Events
 Timeline Output
 ```
 
+Timeline generation reads active and corrected memories directly from SQLite.
+It removes records superseded by visible corrections, excludes deleted and
+untraceable memories, interprets partial dates as supported intervals, and
+keeps unknown dates in a separate collection. It is a deterministic Python
+service with no LangGraph or model call.
+
 ---
 
 ## Autobiography Generation
@@ -659,6 +665,10 @@ GET
 `POST /api/v1/chat` accepts `session_id`, `question`, and `top_k` (1 to 20).
 The response includes the final answer, retrieved memory IDs, SQLite-backed
 citations, validation result, and bounded retry count.
+
+`POST /api/v1/timeline` accepts optional inclusive ISO `start_date` and
+`end_date` values. The response separates chronologically sorted `events` from
+`undated_events`, and every event contains source citations.
 
 ---
 

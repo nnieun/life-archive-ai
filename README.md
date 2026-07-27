@@ -244,6 +244,18 @@ one rewrite; a second failure returns a safe rejection instead of the draft.
 User and assistant messages, including validated citations, are saved to
 SQLite. Retrieved transcript content is always treated as untrusted data.
 
+## Memory Timeline
+
+`POST /api/v1/timeline` returns traceable memories in chronological order.
+Exact, day, month, year, and parseable approximate dates are sorted without
+inventing missing date parts. Unknown or unparseable dates are returned in a
+separate `undated_events` list. Optional inclusive `start_date` and `end_date`
+filters use the supported date interval for partial dates.
+
+Corrected memories replace the records they supersede, deleted memories are
+excluded, and every returned event includes SQLite-backed transcript offsets.
+The timeline is a normal Python service and does not use LangGraph or an LLM.
+
 ---
 
 # Future Work

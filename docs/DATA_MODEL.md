@@ -342,18 +342,31 @@ class TimelineEvent(BaseModel):
 
     memory_id: str
 
+    transcript_id: str
+
     event_date: str | None
+
+    date_precision: DatePrecision
+
+    date_label: str
 
     title: str
 
     description: str
 
-    citation: Citation
+    status: MemoryStatus
+
+    citations: list[CitationRecord]
 ```
 
-Timeline is always sorted by
+Timeline responses contain `events` and `undated_events`. Dated events are
+sorted by the earliest supported date without filling in unknown date parts.
+Unknown dates and approximate values that cannot be interpreted are kept in
+`undated_events`.
 
-event_date
+Corrected memories suppress the records named by `supersedes_memory_id`.
+Deleted memories and memories without a traceable source are not returned.
+Every citation includes the transcript ID and half-open source offset range.
 
 ---
 
