@@ -386,13 +386,23 @@ Stores
 
 - embedding
 - memory_id
-- metadata
+- minimal metadata: embedding_version and content_hash
 
 Never store business data only in ChromaDB.
 
 If ChromaDB is deleted,
 
 it must be rebuildable from SQLite.
+
+The persistent memory collection uses each SQLite `memory_id` as its Chroma ID.
+Indexing is idempotent: an unchanged content hash and embedding version skips
+another embedding call, while changed memories are upserted. Deleted SQLite
+memories are removed during synchronization.
+
+Similarity search uses Chroma only to rank candidate IDs. Before returning a
+result, the service reloads the current memory from SQLite and rejects deleted
+or stale candidates. The indexed text is limited to the memory title and
+summary and is always rebuildable.
 
 ---
 

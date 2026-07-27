@@ -209,6 +209,16 @@ Inspect transcript structure without copying raw text into the report:
 See `docs/DATA_INPUT_RULES.md` for the accepted loader input contract and the
 current dataset exceptions.
 
+## Memory Vector Index
+
+Structured memories can be indexed with OpenAI `text-embedding-3-small` and a
+persistent Chroma client. Chroma stores only rebuildable retrieval data; SQLite
+remains the source of truth and search hits are reloaded from SQLite.
+
+The local index path defaults to `data/indexes/chroma` and is ignored by Git.
+Set `OPENAI_EMBEDDING_MODEL` or `CHROMA_PERSIST_DIRECTORY` in `.env` to override
+the defaults. Tests use deterministic fake embeddings and never call OpenAI.
+
 ---
 
 # Future Work
