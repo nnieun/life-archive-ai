@@ -146,6 +146,33 @@ Final Answer
 
 ---
 
+The Q&A workflow is a bounded `StateGraph`:
+
+```text
+retrieve
+  -> evidence_sufficient
+     -> insufficient_answer -> END
+     -> generate_answer
+        -> verify_answer
+           -> finalize -> END
+           -> rewrite_once
+              -> verify_answer
+                 -> finalize_or_reject -> END
+```
+
+Model outputs are strict Pydantic Structured Outputs. The generated answer is a
+list of claims, and every claim must carry one or more selected `memory_id`
+values. Application code resolves those IDs to SQLite `memory_sources`, renders
+transcript IDs and half-open source offsets, and rejects IDs outside the
+selected evidence before model verification.
+
+Retrieved memories are wrapped as escaped JSON and explicitly treated as
+untrusted data. Instructions inside transcripts cannot alter the workflow. The
+graph performs at most one rewrite and never returns a draft that fails final
+verification.
+
+---
+
 ## Timeline Generation
 
 ```text
@@ -628,6 +655,10 @@ GET
 
 /api/v1/autobiographies/{id}
 ```
+
+`POST /api/v1/chat` accepts `session_id`, `question`, and `top_k` (1 to 20).
+The response includes the final answer, retrieved memory IDs, SQLite-backed
+citations, validation result, and bounded retry count.
 
 ---
 

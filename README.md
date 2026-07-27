@@ -227,6 +227,23 @@ retrieval combines the BM25 and Chroma rankings with Reciprocal Rank Fusion
 (RRF), removes duplicate memory IDs, applies Top-K, and reloads every result
 from SQLite. Deleted or stale memories are never returned.
 
+## Grounded Question Answering
+
+`POST /api/v1/chat` runs a bounded LangGraph workflow:
+
+```text
+retrieve -> assess evidence -> generate cited claims -> verify
+                                      ^                 |
+                                      |-- rewrite once -|
+```
+
+The graph refuses questions without sufficient retrieved evidence. Each answer
+claim must name supporting `memory_id` values, which the application resolves
+to SQLite transcript IDs and source offsets. Failed verification can trigger
+one rewrite; a second failure returns a safe rejection instead of the draft.
+User and assistant messages, including validated citations, are saved to
+SQLite. Retrieved transcript content is always treated as untrusted data.
+
 ---
 
 # Future Work
