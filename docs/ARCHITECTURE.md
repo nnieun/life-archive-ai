@@ -101,15 +101,15 @@ Chunking
 
 ↓
 
-Embedding
-
-↓
-
 Structured Memory Extraction
 
 ↓
 
 SQLite
+
+↓
+
+Embedding
 
 ↓
 
@@ -341,6 +341,11 @@ Responsible for
 - Answer generation
 - Chapter generation
 
+Memory extraction is a normal service, not a LangGraph workflow. It uses an
+OpenAI native JSON Schema Structured Output mapped to a strict Pydantic model,
+validates evidence offsets against the stored transcript segment, and writes
+the memory plus source reference atomically to SQLite.
+
 ---
 
 # 6. Database Architecture
@@ -381,7 +386,7 @@ Stores
 
 - embedding
 - memory_id
-- metadata
+- minimal metadata: embedding_version and content_hash
 
 Never store business data only in ChromaDB.
 
@@ -389,9 +394,36 @@ If ChromaDB is deleted,
 
 it must be rebuildable from SQLite.
 
+The persistent memory collection uses each SQLite `memory_id` as its Chroma ID.
+Indexing is idempotent: an unchanged content hash and embedding version skips
+another embedding call, while changed memories are upserted. Deleted SQLite
+memories are removed during synchronization.
+
+Similarity search uses Chroma only to rank candidate IDs. Before returning a
+result, the service reloads the current memory from SQLite and rejects deleted
+or stale candidates. The indexed text is limited to the memory title and
+summary and is always rebuildable.
+
 ---
 
 # 8. Hybrid Retrieval
+
+The retrieval service combines two independent rankings:
+
+```text
+query
+  -> Chroma similarity ranking
+  -> BM25 word + character bigram ranking
+  -> Reciprocal Rank Fusion
+  -> deduplicate memory_id
+  -> reload active memories from SQLite
+  -> Top-K results
+```
+
+RRF combines rank positions rather than incomparable raw dense and sparse
+scores. The in-memory BM25 index is disposable and can be rebuilt from active
+SQLite memories. It verifies content hashes at search time so changed records
+must be synchronized before they can be returned.
 
 The retrieval pipeline combines
 

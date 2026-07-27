@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 from os import getenv
+from pathlib import Path
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict
@@ -18,9 +19,22 @@ class Settings(BaseModel):
     app_version: str = "0.0.0"
     api_prefix: str = "/api/v1"
     environment: str = "development"
+    openai_model: str = "gpt-5.6-sol"
+    openai_embedding_model: str = "text-embedding-3-small"
+    chroma_persist_directory: Path = Path("data/indexes/chroma")
 
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     """Return one immutable settings instance for the process."""
-    return Settings(environment=getenv("APP_ENV", "development"))
+    return Settings(
+        environment=getenv("APP_ENV", "development"),
+        openai_model=getenv("OPENAI_MODEL", "gpt-5.6-sol"),
+        openai_embedding_model=getenv(
+            "OPENAI_EMBEDDING_MODEL",
+            "text-embedding-3-small",
+        ),
+        chroma_persist_directory=Path(
+            getenv("CHROMA_PERSIST_DIRECTORY", "data/indexes/chroma")
+        ),
+    )

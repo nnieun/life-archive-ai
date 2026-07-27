@@ -209,6 +209,24 @@ Inspect transcript structure without copying raw text into the report:
 See `docs/DATA_INPUT_RULES.md` for the accepted loader input contract and the
 current dataset exceptions.
 
+## Memory Vector Index
+
+Structured memories can be indexed with OpenAI `text-embedding-3-small` and a
+persistent Chroma client. Chroma stores only rebuildable retrieval data; SQLite
+remains the source of truth and search hits are reloaded from SQLite.
+
+The local index path defaults to `data/indexes/chroma` and is ignored by Git.
+Set `OPENAI_EMBEDDING_MODEL` or `CHROMA_PERSIST_DIRECTORY` in `.env` to override
+the defaults. Tests use deterministic fake embeddings and never call OpenAI.
+
+## Hybrid Memory Retrieval
+
+Keyword retrieval uses BM25 over normalized words and character bigrams so the
+MVP can search Korean text without a separate morphological analyzer. Hybrid
+retrieval combines the BM25 and Chroma rankings with Reciprocal Rank Fusion
+(RRF), removes duplicate memory IDs, applies Top-K, and reloads every result
+from SQLite. Deleted or stale memories are never returned.
+
 ---
 
 # Future Work

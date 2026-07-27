@@ -121,6 +121,12 @@ content_hash
 raw_content
 
 normalized_content
+
+created_at
+
+updated_at
+
+deleted_at
 ```
 
 ---
@@ -132,7 +138,7 @@ Each transcript is divided into chunks.
 ```python
 class Chunk(BaseModel):
 
-    chunk_id: str
+    segment_id: str
 
     transcript_id: str
 
@@ -163,7 +169,29 @@ content
 start_offset
 
 end_offset
+
+created_at
+
+updated_at
+
+deleted_at
 ```
+
+`start_offset` is inclusive and `end_offset` is exclusive. Both offsets refer
+to `Transcript.normalized_content`, and every persisted chunk must satisfy:
+
+```python
+chunk.content == transcript.normalized_content[
+    chunk.start_offset:chunk.end_offset
+]
+```
+
+The fixed-size chunker supports character units by default and
+whitespace-delimited token units when explicitly selected. Validated
+`chunk_size` and `chunk_overlap` settings ensure overlap is smaller than the
+chunk size. Initial comparison sizes are 256, 512, and 1024 units.
+Event-aware chunking is recorded as a later evaluation candidate and is not
+used to infer event boundaries during deterministic ingestion.
 
 ---
 
@@ -178,17 +206,23 @@ class Memory(BaseModel):
 
     transcript_id: str
 
+    title: str
+
     summary: str
 
     people: list[str]
 
     location: str | None
 
-    event_date: datetime | None
+    event_date: str | None
+
+    date_precision: str
+
+    emotion: str | None
 
     confidence: float
 
-    source_offsets: list[int]
+    uncertainty_notes: str | None
 
     status: str
 ```
@@ -204,6 +238,8 @@ memory_id
 
 transcript_id
 
+title
+
 summary
 
 people_json
@@ -212,9 +248,23 @@ location
 
 event_date
 
+date_precision
+
+emotion
+
 confidence
 
+uncertainty_notes
+
 status
+
+supersedes_memory_id
+
+created_at
+
+updated_at
+
+deleted_at
 ```
 
 Status
@@ -224,6 +274,44 @@ Status
 - corrected
 
 - deleted
+
+`people` is serialized to `people_json` TEXT and validated as `list[str]` by
+Pydantic. Deleted memories remain stored but are excluded from default queries.
+
+`date_precision` is one of `exact`, `day`, `month`, `year`, `approximate`, or
+`unknown`. Unknown dates keep `event_date` null. Partial and approximate dates
+remain strings so ingestion never invents missing month, day, or time values.
+Low-confidence and approximate extractions retain an `uncertainty_notes` value.
+
+Memory extraction uses OpenAI Structured Outputs with a strict Pydantic batch
+schema. Evidence offsets returned for a segment are validated and converted to
+absolute normalized-transcript offsets before the memory and its
+`memory_sources` row are saved in one SQLite transaction.
+
+---
+
+# 5.1 Memory Source Model
+
+Memory evidence is stored separately so every structured memory remains
+traceable to transcript offsets and, when available, one segment.
+
+```python
+class MemorySource(BaseModel):
+
+    memory_source_id: str
+
+    memory_id: str
+
+    transcript_id: str
+
+    segment_id: str | None
+
+    start_offset: int
+
+    end_offset: int
+```
+
+SQLite table: `memory_sources`.
 
 ---
 
@@ -254,7 +342,7 @@ class TimelineEvent(BaseModel):
 
     memory_id: str
 
-    event_date: datetime | None
+    event_date: str | None
 
     title: str
 
@@ -301,6 +389,9 @@ conversation_sessions
 conversation_messages
 ```
 
+Conversation message citations are stored as JSON TEXT and validated as a list
+of typed citation records before writing and after reading.
+
 ---
 
 # 9. Autobiography Model
@@ -341,7 +432,16 @@ title
 content_json
 
 created_at
+
+updated_at
+
+status
+
+deleted_at
 ```
+
+Autobiography content is JSON TEXT validated by Pydantic. MVP content is limited
+to at most three typed chapters.
 
 ---
 
