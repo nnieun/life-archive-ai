@@ -408,6 +408,23 @@ summary and is always rebuildable.
 
 # 8. Hybrid Retrieval
 
+The retrieval service combines two independent rankings:
+
+```text
+query
+  -> Chroma similarity ranking
+  -> BM25 word + character bigram ranking
+  -> Reciprocal Rank Fusion
+  -> deduplicate memory_id
+  -> reload active memories from SQLite
+  -> Top-K results
+```
+
+RRF combines rank positions rather than incomparable raw dense and sparse
+scores. The in-memory BM25 index is disposable and can be rebuilt from active
+SQLite memories. It verifies content hashes at search time so changed records
+must be synchronized before they can be returned.
+
 The retrieval pipeline combines
 
 Semantic Search

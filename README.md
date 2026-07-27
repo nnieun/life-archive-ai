@@ -219,6 +219,14 @@ The local index path defaults to `data/indexes/chroma` and is ignored by Git.
 Set `OPENAI_EMBEDDING_MODEL` or `CHROMA_PERSIST_DIRECTORY` in `.env` to override
 the defaults. Tests use deterministic fake embeddings and never call OpenAI.
 
+## Hybrid Memory Retrieval
+
+Keyword retrieval uses BM25 over normalized words and character bigrams so the
+MVP can search Korean text without a separate morphological analyzer. Hybrid
+retrieval combines the BM25 and Chroma rankings with Reciprocal Rank Fusion
+(RRF), removes duplicate memory IDs, applies Top-K, and reloads every result
+from SQLite. Deleted or stale memories are never returned.
+
 ---
 
 # Future Work
