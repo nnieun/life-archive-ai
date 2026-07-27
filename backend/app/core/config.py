@@ -18,9 +18,13 @@ class Settings(BaseModel):
     app_version: str = "0.0.0"
     api_prefix: str = "/api/v1"
     environment: str = "development"
+    openai_model: str = "gpt-5.6-sol"
 
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     """Return one immutable settings instance for the process."""
-    return Settings(environment=getenv("APP_ENV", "development"))
+    return Settings(
+        environment=getenv("APP_ENV", "development"),
+        openai_model=getenv("OPENAI_MODEL", "gpt-5.6-sol"),
+    )

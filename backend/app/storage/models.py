@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from enum import StrEnum
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
+
+from backend.app.models.memory import DatePrecision
 
 
 class StorageModel(BaseModel):
@@ -73,21 +74,37 @@ class TranscriptSegmentRecord(TranscriptSegmentCreate):
 class MemoryCreate(StorageModel):
     memory_id: str
     transcript_id: str
+    title: str = Field(min_length=1)
     summary: str = Field(min_length=1, repr=False)
     people: list[str] = Field(default_factory=list)
     location: str | None = None
-    event_date: datetime | None = None
+    event_date: str | None = None
+    date_precision: DatePrecision = DatePrecision.UNKNOWN
+    emotion: str | None = None
     confidence: float = Field(ge=0.0, le=1.0)
+    uncertainty_notes: str | None = None
     status: MemoryStatus = MemoryStatus.ACTIVE
     supersedes_memory_id: str | None = None
 
+    @model_validator(mode="after")
+    def validate_event_date(self) -> MemoryCreate:
+        if (self.event_date is None) != (
+            self.date_precision is DatePrecision.UNKNOWN
+        ):
+            raise ValueError("event_date and date_precision must agree")
+        return self
+
 
 class MemoryUpdate(StorageModel):
+    title: str | None = Field(default=None, min_length=1)
     summary: str | None = Field(default=None, min_length=1, repr=False)
     people: list[str] | None = None
     location: str | None = None
-    event_date: datetime | None = None
+    event_date: str | None = None
+    date_precision: DatePrecision | None = None
+    emotion: str | None = None
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    uncertainty_notes: str | None = None
     status: MemoryStatus | None = None
     supersedes_memory_id: str | None = None
 
@@ -95,16 +112,28 @@ class MemoryUpdate(StorageModel):
 class MemoryRecord(StorageModel):
     memory_id: str
     transcript_id: str
+    title: str
     summary: str = Field(repr=False)
     people: list[str]
     location: str | None = None
-    event_date: datetime | None = None
+    event_date: str | None = None
+    date_precision: DatePrecision
+    emotion: str | None = None
     confidence: float
+    uncertainty_notes: str | None = None
     status: MemoryStatus
     supersedes_memory_id: str | None = None
     created_at: AwareDatetime
     updated_at: AwareDatetime
     deleted_at: AwareDatetime | None = None
+
+    @model_validator(mode="after")
+    def validate_event_date(self) -> MemoryRecord:
+        if (self.event_date is None) != (
+            self.date_precision is DatePrecision.UNKNOWN
+        ):
+            raise ValueError("event_date and date_precision must agree")
+        return self
 
 
 class MemorySourceCreate(StorageModel):

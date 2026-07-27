@@ -43,11 +43,24 @@ CREATE TABLE IF NOT EXISTS transcript_segments (
 CREATE TABLE IF NOT EXISTS memories (
     memory_id TEXT PRIMARY KEY,
     transcript_id TEXT NOT NULL,
+    title TEXT NOT NULL,
     summary TEXT NOT NULL,
     people_json TEXT NOT NULL CHECK (json_valid(people_json)),
     location TEXT,
     event_date TEXT,
+    date_precision TEXT NOT NULL DEFAULT 'unknown'
+        CHECK (
+            date_precision IN (
+                'exact', 'day', 'month', 'year', 'approximate', 'unknown'
+            )
+        )
+        CHECK (
+            (event_date IS NULL AND date_precision = 'unknown')
+            OR (event_date IS NOT NULL AND date_precision != 'unknown')
+        ),
+    emotion TEXT,
     confidence REAL NOT NULL CHECK (confidence >= 0.0 AND confidence <= 1.0),
+    uncertainty_notes TEXT,
     status TEXT NOT NULL DEFAULT 'active'
         CHECK (status IN ('active', 'corrected', 'deleted')),
     supersedes_memory_id TEXT,
@@ -122,6 +135,17 @@ CREATE INDEX IF NOT EXISTS idx_messages_session_created
     ON conversation_messages(session_id, created_at);
 """
 
+MEMORY_COLUMN_MIGRATIONS = {
+    "title": "TEXT",
+    "date_precision": (
+        "TEXT NOT NULL DEFAULT 'unknown' "
+        "CHECK (date_precision IN "
+        "('exact', 'day', 'month', 'year', 'approximate', 'unknown'))"
+    ),
+    "emotion": "TEXT",
+    "uncertainty_notes": "TEXT",
+}
+
 
 class SQLiteDatabase:
     """Own one SQLite connection with enforced foreign keys and transactions."""
@@ -157,6 +181,25 @@ class SQLiteDatabase:
         """Create every application table and index idempotently."""
         with self._lock:
             self._connection.executescript(SCHEMA_SQL)
+            existing_columns = {
+                str(row["name"])
+                for row in self._connection.execute(
+                    "PRAGMA table_info(memories)"
+                ).fetchall()
+            }
+            for column, definition in MEMORY_COLUMN_MIGRATIONS.items():
+                if column not in existing_columns:
+                    self._connection.execute(
+                        f"ALTER TABLE memories ADD COLUMN {column} {definition}"
+                    )
+            self._connection.execute(
+                "UPDATE memories SET title = summary "
+                "WHERE title IS NULL OR trim(title) = ''"
+            )
+            self._connection.execute(
+                "UPDATE memories SET date_precision = 'exact' "
+                "WHERE event_date IS NOT NULL AND date_precision = 'unknown'"
+            )
             self._connection.commit()
 
     @contextmanager

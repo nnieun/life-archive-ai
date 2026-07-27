@@ -101,15 +101,15 @@ Chunking
 
 ↓
 
-Embedding
-
-↓
-
 Structured Memory Extraction
 
 ↓
 
 SQLite
+
+↓
+
+Embedding
 
 ↓
 
@@ -340,6 +340,11 @@ Responsible for
 - Retrieval
 - Answer generation
 - Chapter generation
+
+Memory extraction is a normal service, not a LangGraph workflow. It uses an
+OpenAI native JSON Schema Structured Output mapped to a strict Pydantic model,
+validates evidence offsets against the stored transcript segment, and writes
+the memory plus source reference atomically to SQLite.
 
 ---
 

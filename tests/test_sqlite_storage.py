@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from backend.app.models.memory import DatePrecision
 from backend.app.models.transcript import LoadedTranscript
 from backend.app.storage.database import SQLiteDatabase
 from backend.app.storage.models import (
@@ -100,6 +101,61 @@ def test_schema_creates_all_tables_and_enables_foreign_keys(storage) -> None:
             )
 
 
+def test_schema_migrates_task_006_memory_columns(tmp_path: Path) -> None:
+    database_path = tmp_path / "legacy-storage.sqlite3"
+    connection = sqlite3.connect(database_path)
+    connection.executescript(
+        """
+        CREATE TABLE memories (
+            memory_id TEXT PRIMARY KEY,
+            transcript_id TEXT NOT NULL,
+            summary TEXT NOT NULL,
+            people_json TEXT NOT NULL,
+            location TEXT,
+            event_date TEXT,
+            confidence REAL NOT NULL,
+            status TEXT NOT NULL,
+            supersedes_memory_id TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            deleted_at TEXT
+        );
+        INSERT INTO memories (
+            memory_id, transcript_id, summary, people_json, event_date,
+            confidence, status, created_at, updated_at
+        ) VALUES (
+            'mem_legacy', 'tr_legacy', 'Legacy memory', '[]',
+            '2010-05-01T00:00:00+00:00', 0.8, 'active',
+            '2026-07-27T00:00:00+00:00', '2026-07-27T00:00:00+00:00'
+        );
+        """
+    )
+    connection.close()
+
+    database = SQLiteDatabase(database_path)
+    database.initialize()
+    columns = {
+        row["name"]
+        for row in database.connection.execute(
+            "PRAGMA table_info(memories)"
+        ).fetchall()
+    }
+    migrated = database.connection.execute(
+        "SELECT title, date_precision, emotion, uncertainty_notes "
+        "FROM memories WHERE memory_id = 'mem_legacy'"
+    ).fetchone()
+    database.close()
+
+    assert {
+        "title",
+        "date_precision",
+        "emotion",
+        "uncertainty_notes",
+    } <= columns
+    assert migrated["title"] == "Legacy memory"
+    assert migrated["date_precision"] == "exact"
+
+
 def test_transcript_crud_and_duplicate_hash_prevention(storage) -> None:
     _database, repository, _path = storage
     loaded = _loaded_transcript()
@@ -140,10 +196,12 @@ def test_memory_crud_json_validation_and_deleted_filter(storage) -> None:
     memory = MemoryCreate(
         memory_id="mem_001",
         transcript_id="tr_001",
+        title="가족과의 기억",
         summary="가족과 함께한 기억",
         people=["가족", "친구"],
         location="서울",
-        event_date=datetime(2010, 5, 1, tzinfo=UTC),
+        event_date="2010-05-01",
+        date_precision=DatePrecision.DAY,
         confidence=0.8,
     )
 
@@ -188,6 +246,7 @@ def test_memory_requires_an_active_transcript(storage) -> None:
             MemoryCreate(
                 memory_id="mem_orphan",
                 transcript_id="tr_missing",
+                title="연결되지 않은 기억",
                 summary="연결되지 않은 기억",
                 confidence=0.5,
             )
@@ -211,6 +270,7 @@ def test_segments_and_memory_sources_round_trip(storage) -> None:
         MemoryCreate(
             memory_id="mem_001",
             transcript_id="tr_001",
+            title="구조화된 기억",
             summary="구조화된 기억",
             confidence=0.9,
         )

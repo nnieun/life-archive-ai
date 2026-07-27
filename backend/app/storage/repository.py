@@ -172,6 +172,10 @@ class SQLiteRepository:
             if record is None:
                 raise StorageNotFoundError("Transcript was not found")
             return record
+        if ("event_date" in fields) != ("date_precision" in fields):
+            raise StorageIntegrityError(
+                "event_date and date_precision must be updated together"
+            )
 
         assignments: list[str] = []
         values: list[Any] = []
@@ -317,6 +321,21 @@ class SQLiteRepository:
             ).fetchall()
         return [_segment_record(row) for row in rows]
 
+    def get_segment(
+        self,
+        segment_id: str,
+        *,
+        include_deleted: bool = False,
+    ) -> TranscriptSegmentRecord | None:
+        deleted_clause = "" if include_deleted else " AND deleted_at IS NULL"
+        with self._database.transaction() as connection:
+            row = connection.execute(
+                "SELECT * FROM transcript_segments WHERE segment_id = ?"
+                f"{deleted_clause}",
+                (segment_id,),
+            ).fetchone()
+        return _segment_record(row) if row is not None else None
+
     def soft_delete_segment(self, segment_id: str) -> bool:
         timestamp = _now_iso()
         with self._database.transaction() as connection:
@@ -336,19 +355,24 @@ class SQLiteRepository:
                 connection.execute(
                     """
                     INSERT INTO memories (
-                        memory_id, transcript_id, summary, people_json,
-                        location, event_date, confidence, status,
-                        supersedes_memory_id, created_at, updated_at, deleted_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        memory_id, transcript_id, title, summary, people_json,
+                        location, event_date, date_precision, emotion, confidence,
+                        uncertainty_notes, status, supersedes_memory_id,
+                        created_at, updated_at, deleted_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         memory.memory_id,
                         memory.transcript_id,
+                        memory.title,
                         memory.summary,
                         _json_dump(memory.people),
                         memory.location,
-                        _datetime_iso(memory.event_date),
+                        memory.event_date,
+                        memory.date_precision.value,
+                        memory.emotion,
                         memory.confidence,
+                        memory.uncertainty_notes,
                         memory.status.value,
                         memory.supersedes_memory_id,
                         timestamp,
@@ -412,14 +436,23 @@ class SQLiteRepository:
         values: list[Any] = []
         for field in sorted(fields):
             value = getattr(update, field)
-            if field in {"summary", "people", "confidence", "status"} and value is None:
+            if (
+                field
+                in {
+                    "title",
+                    "summary",
+                    "people",
+                    "date_precision",
+                    "confidence",
+                    "status",
+                }
+                and value is None
+            ):
                 raise StorageIntegrityError(f"{field} cannot be cleared")
             column = "people_json" if field == "people" else field
             if field == "people":
                 value = _json_dump(value)
-            elif field == "event_date":
-                value = _datetime_iso(value)
-            elif field == "status" and value is not None:
+            elif field in {"date_precision", "status"} and value is not None:
                 value = value.value
             assignments.append(f"{column} = ?")
             values.append(value)
@@ -492,6 +525,107 @@ class SQLiteRepository:
         if record is None:
             raise StorageError("Memory source was not persisted")
         return record
+
+    def create_memories_with_sources(
+        self,
+        items: list[tuple[MemoryCreate, MemorySourceCreate]],
+    ) -> list[MemoryRecord]:
+        """Atomically persist extracted memories and their transcript evidence."""
+        if not items:
+            return []
+
+        validated: list[
+            tuple[MemoryCreate, MemorySourceCreate, TranscriptSegmentRecord]
+        ] = []
+        for memory, source in items:
+            if (
+                memory.memory_id != source.memory_id
+                or memory.transcript_id != source.transcript_id
+            ):
+                raise StorageIntegrityError(
+                    "Memory and source identifiers must match"
+                )
+            if self.get_transcript(memory.transcript_id) is None:
+                raise StorageIntegrityError("Memory requires an active transcript")
+            if source.segment_id is None:
+                raise StorageIntegrityError(
+                    "Extracted memory requires a transcript segment"
+                )
+            segment = self.get_segment(source.segment_id)
+            if segment is None or segment.transcript_id != memory.transcript_id:
+                raise StorageIntegrityError("Memory source segment does not match")
+            if (
+                source.start_offset < segment.start_offset
+                or source.end_offset > segment.end_offset
+                or source.end_offset <= source.start_offset
+            ):
+                raise StorageIntegrityError(
+                    "Memory source offsets must be inside its segment"
+                )
+            validated.append((memory, source, segment))
+
+        timestamp = _now_iso()
+        try:
+            with self._database.transaction() as connection:
+                for memory, source, _segment in validated:
+                    connection.execute(
+                        """
+                        INSERT INTO memories (
+                            memory_id, transcript_id, title, summary, people_json,
+                            location, event_date, date_precision, emotion,
+                            confidence, uncertainty_notes, status,
+                            supersedes_memory_id, created_at, updated_at, deleted_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            memory.memory_id,
+                            memory.transcript_id,
+                            memory.title,
+                            memory.summary,
+                            _json_dump(memory.people),
+                            memory.location,
+                            memory.event_date,
+                            memory.date_precision.value,
+                            memory.emotion,
+                            memory.confidence,
+                            memory.uncertainty_notes,
+                            memory.status.value,
+                            memory.supersedes_memory_id,
+                            timestamp,
+                            timestamp,
+                            timestamp
+                            if memory.status is MemoryStatus.DELETED
+                            else None,
+                        ),
+                    )
+                    connection.execute(
+                        """
+                        INSERT INTO memory_sources (
+                            memory_source_id, memory_id, transcript_id, segment_id,
+                            start_offset, end_offset, created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            source.memory_source_id,
+                            source.memory_id,
+                            source.transcript_id,
+                            source.segment_id,
+                            source.start_offset,
+                            source.end_offset,
+                            timestamp,
+                            timestamp,
+                        ),
+                    )
+        except sqlite3.IntegrityError as exception:
+            raise _translate_integrity(exception) from exception
+
+        records = [
+            self.get_memory(memory.memory_id)
+            for memory, _source, _segment in validated
+        ]
+        if any(record is None for record in records):
+            raise StorageError("Extracted memories were not persisted")
+        return [record for record in records if record is not None]
 
     def get_memory_source(
         self,

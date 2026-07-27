@@ -44,11 +44,15 @@ erDiagram
     memories {
         TEXT memory_id PK
         TEXT transcript_id FK
+        TEXT title
         TEXT summary
         TEXT people_json
         TEXT location
         TEXT event_date
+        TEXT date_precision
+        TEXT emotion
         REAL confidence
+        TEXT uncertainty_notes
         TEXT status
         TEXT supersedes_memory_id FK
         TEXT created_at
@@ -108,6 +112,10 @@ erDiagram
 - JSON values are stored as TEXT, checked with SQLite `json_valid`, and validated
   with Pydantic before writes and after reads.
 - Memory status is restricted to `active`, `corrected`, or `deleted`.
+- Memory date precision is restricted to `exact`, `day`, `month`, `year`,
+  `approximate`, or `unknown`.
+- Extracted memories and their source rows are written atomically after the
+  evidence range is verified against its active transcript segment.
 - Deleted memories are hidden by default and retained for traceability.
 - `uploaded_at` and `recorded_at` belong to transcripts; `event_date` belongs to
   memories. They are never substituted for one another.
