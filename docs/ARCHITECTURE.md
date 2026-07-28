@@ -146,6 +146,33 @@ Final Answer
 
 ---
 
+The Q&A workflow is a bounded `StateGraph`:
+
+```text
+retrieve
+  -> evidence_sufficient
+     -> insufficient_answer -> END
+     -> generate_answer
+        -> verify_answer
+           -> finalize -> END
+           -> rewrite_once
+              -> verify_answer
+                 -> finalize_or_reject -> END
+```
+
+Model outputs are strict Pydantic Structured Outputs. The generated answer is a
+list of claims, and every claim must carry one or more selected `memory_id`
+values. Application code resolves those IDs to SQLite `memory_sources`, renders
+transcript IDs and half-open source offsets, and rejects IDs outside the
+selected evidence before model verification.
+
+Retrieved memories are wrapped as escaped JSON and explicitly treated as
+untrusted data. Instructions inside transcripts cannot alter the workflow. The
+graph performs at most one rewrite and never returns a draft that fails final
+verification.
+
+---
+
 ## Timeline Generation
 
 ```text
@@ -163,6 +190,12 @@ Timeline Events
 
 Timeline Output
 ```
+
+Timeline generation reads active and corrected memories directly from SQLite.
+It removes records superseded by visible corrections, excludes deleted and
+untraceable memories, interprets partial dates as supported intervals, and
+keeps unknown dates in a separate collection. It is a deterministic Python
+service with no LangGraph or model call.
 
 ---
 
@@ -499,37 +532,25 @@ Rewrite
 
 ## Autobiography Graph
 
-```mermaid
-flowchart LR
-
-START
-
---> Retrieve Memories
-
-Retrieve Memories
-
---> Timeline
-
-Timeline
-
---> Chapter Planning
-
-Chapter Planning
-
---> Chapter Writing
-
-Chapter Writing
-
---> Verification
-
-Verification
-
---> Save
-
-Save
-
---> END
+```text
+analyze_request
+  -> retrieve_memories
+  -> build_timeline
+  -> create_chapter_plan (1 to 3 chapters)
+  -> write_chapter
+  -> verify_chapter
+     -> pass: save_chapter -> next chapter
+     -> fail: revise_once -> verify_chapter
+        -> second failure: stop with verified draft only
+  -> assemble_autobiography
+  -> mark completed
 ```
+
+Every generated paragraph names its supporting `memory_id` values. Application
+code rejects citations outside the chapter plan, resolves accepted IDs to
+SQLite source offsets, and saves only verified chapters. Each successful
+chapter update persists the accumulated draft; final assembly changes status
+to `completed` only after every requested chapter passes.
 
 ---
 
@@ -558,17 +579,31 @@ AutobiographyState
 ```text
 request
 
+retrieval_query
+
+target_period
+
+target_topics
+
+retrieved_memory_ids
+
 timeline
 
 chapter_plan
 
-current_chapter
+current_chapter_index
 
-draft
+chapter_drafts
 
 review_result
 
-final_book
+citations
+
+final_content
+
+retry_count
+
+error
 ```
 
 ---
@@ -628,6 +663,19 @@ GET
 
 /api/v1/autobiographies/{id}
 ```
+
+`POST /api/v1/chat` accepts `session_id`, `question`, and `top_k` (1 to 20).
+The response includes the final answer, retrieved memory IDs, SQLite-backed
+citations, validation result, and bounded retry count.
+
+`POST /api/v1/timeline` accepts optional inclusive ISO `start_date` and
+`end_date` values. The response separates chronologically sorted `events` from
+`undated_events`, and every event contains source citations.
+
+`POST /api/v1/autobiographies` accepts a title, generation request, optional
+period and topics, and a chapter count from one to three. It returns the
+persisted draft or completed autobiography plus retrieval and validation
+status. `GET /api/v1/autobiographies/{id}` reads the stored result.
 
 ---
 

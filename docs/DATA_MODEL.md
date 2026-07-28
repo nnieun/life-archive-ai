@@ -342,18 +342,31 @@ class TimelineEvent(BaseModel):
 
     memory_id: str
 
+    transcript_id: str
+
     event_date: str | None
+
+    date_precision: DatePrecision
+
+    date_label: str
 
     title: str
 
     description: str
 
-    citation: Citation
+    status: MemoryStatus
+
+    citations: list[CitationRecord]
 ```
 
-Timeline is always sorted by
+Timeline responses contain `events` and `undated_events`. Dated events are
+sorted by the earliest supported date without filling in unknown date parts.
+Unknown dates and approximate values that cannot be interpreted are kept in
+`undated_events`.
 
-event_date
+Corrected memories suppress the records named by `supersedes_memory_id`.
+Deleted memories and memories without a traceable source are not returned.
+Every citation includes the transcript ID and half-open source offset range.
 
 ---
 
@@ -442,6 +455,15 @@ deleted_at
 
 Autobiography content is JSON TEXT validated by Pydantic. MVP content is limited
 to at most three typed chapters.
+
+Generation first stores an empty `draft`. Each chapter is produced as
+structured paragraphs with one or more supporting `memory_id` values. After
+verification, those IDs are converted to `CitationRecord` values and the
+accumulated chapter list is written back to `content_json`. Only a fully
+verified requested chapter set changes the status to `completed`.
+
+If a chapter still fails after one revision, the unverified chapter is not
+stored. Any earlier verified chapters remain available in the draft.
 
 ---
 

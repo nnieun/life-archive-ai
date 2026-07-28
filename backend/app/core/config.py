@@ -21,6 +21,7 @@ class Settings(BaseModel):
     environment: str = "development"
     openai_model: str = "gpt-5.6-sol"
     openai_embedding_model: str = "text-embedding-3-small"
+    sqlite_database_path: Path = Path("data/db/life_archive.sqlite3")
     chroma_persist_directory: Path = Path("data/indexes/chroma")
 
 
@@ -33,6 +34,9 @@ def get_settings() -> Settings:
         openai_embedding_model=getenv(
             "OPENAI_EMBEDDING_MODEL",
             "text-embedding-3-small",
+        ),
+        sqlite_database_path=Path(
+            getenv("SQLITE_DATABASE_PATH", "data/db/life_archive.sqlite3")
         ),
         chroma_persist_directory=Path(
             getenv("CHROMA_PERSIST_DIRECTORY", "data/indexes/chroma")
