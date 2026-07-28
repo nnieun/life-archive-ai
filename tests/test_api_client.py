@@ -59,3 +59,15 @@ def test_upload_client_preserves_original_bytes() -> None:
     client = LifeArchiveApiClient(transport=httpx.MockTransport(handler))
 
     assert client.ingest_transcript("memory.txt", original).transcript_id == "tr_001"
+
+
+def test_upload_client_preserves_conflict_status() -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(409)
+
+    client = LifeArchiveApiClient(transport=httpx.MockTransport(handler))
+
+    with pytest.raises(ApiClientError) as captured:
+        client.ingest_transcript("memory.txt", b"duplicate")
+
+    assert captured.value.status_code == 409

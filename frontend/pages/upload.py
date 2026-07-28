@@ -20,9 +20,15 @@ if st.button("처리 및 인덱싱", type="primary", disabled=uploaded_file is N
                 uploaded_file.getvalue(),
                 language=language.strip() or None,
             )
-        except ApiClientError:
+        except ApiClientError as exception:
             status.update(label="처리에 실패했습니다.", state="error")
-            show_backend_error("TXT 업로드")
+            if exception.status_code == 409:
+                st.error(
+                    "이미 등록된 TXT입니다. 같은 파일명이나 같은 내용은 "
+                    "중복 업로드할 수 없습니다."
+                )
+            else:
+                show_backend_error("TXT 업로드")
         else:
             status.write(f"세그먼트 {result.segment_count}개 처리")
             status.write(f"구조화 기억 {result.memory_count}개 생성")

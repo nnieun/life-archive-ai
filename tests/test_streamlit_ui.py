@@ -70,6 +70,27 @@ def test_txt_upload_displays_processing_and_index_result(
     assert "1개의 기억" in app.success[0].value
 
 
+def test_duplicate_txt_upload_shows_conflict_message(
+    api_client: Mock,
+) -> None:
+    api_client.ingest_transcript.side_effect = ApiClientError(
+        "conflict",
+        status_code=409,
+    )
+    app = AppTest.from_file("frontend/pages/upload.py").run()
+
+    app.file_uploader[0].upload(
+        "memory.txt",
+        b"duplicate",
+        "text/plain",
+    ).run()
+    app.button[0].click().run()
+
+    assert len(app.error) == 1
+    assert "이미 등록된 TXT" in app.error[0].value
+    assert "백엔드가 실행 중인지" not in app.error[0].value
+
+
 def test_chat_displays_answer_and_citation(api_client: Mock) -> None:
     api_client.chat.return_value = ChatResult.model_validate(
         {

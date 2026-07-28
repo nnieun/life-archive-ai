@@ -124,6 +124,15 @@ class AutobiographyResult(ApiModel):
 class ApiClientError(RuntimeError):
     """User-safe backend communication failure."""
 
+    def __init__(
+        self,
+        message: str,
+        *,
+        status_code: int | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+
 
 class LifeArchiveApiClient:
     """Small synchronous client suitable for Streamlit reruns."""
@@ -156,6 +165,11 @@ class LifeArchiveApiClient:
                 response = client.request(method, path, **kwargs)
                 response.raise_for_status()
                 return response_model.model_validate(response.json())
+        except httpx.HTTPStatusError as exception:
+            raise ApiClientError(
+                error_message,
+                status_code=exception.response.status_code,
+            ) from exception
         except (httpx.HTTPError, ValueError, ValidationError) as exception:
             raise ApiClientError(error_message) from exception
 
@@ -206,6 +220,11 @@ class LifeArchiveApiClient:
                     MemoryView.model_validate(item)
                     for item in response.json()
                 ]
+        except httpx.HTTPStatusError as exception:
+            raise ApiClientError(
+                "Memory lookup failed",
+                status_code=exception.response.status_code,
+            ) from exception
         except (httpx.HTTPError, ValueError, ValidationError) as exception:
             raise ApiClientError("Memory lookup failed") from exception
 
