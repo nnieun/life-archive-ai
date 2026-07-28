@@ -236,6 +236,7 @@ class HybridMemoryRetriever:
             raise ValueError("query must not be blank")
         if top_k < 1:
             raise ValueError("top_k must be at least 1")
+        self._bm25_index.sync_from_sqlite()
         candidate_k = top_k * self._candidate_multiplier
         dense_hits = self._dense_retriever.similarity_search(
             query,

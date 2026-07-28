@@ -647,6 +647,10 @@ POST
 
 /api/v1/memories/ingest
 
+GET
+
+/api/v1/memories
+
 POST
 
 /api/v1/chat
@@ -667,6 +671,15 @@ GET
 `POST /api/v1/chat` accepts `session_id`, `question`, and `top_k` (1 to 20).
 The response includes the final answer, retrieved memory IDs, SQLite-backed
 citations, validation result, and bounded retry count.
+
+`POST /api/v1/memories/ingest` accepts an immutable UTF-8 TXT upload as
+base64-encoded bytes. FastAPI saves a new raw original, then calls the normal
+loader, chunker, structured extraction, SQLite persistence, and Chroma indexing
+services. Existing raw filenames and duplicate transcript content are rejected.
+`GET /api/v1/memories` returns active SQLite memories with their source offsets.
+
+Streamlit never invokes backend business services. Its five pages communicate
+only through the typed HTTP client and FastAPI endpoints.
 
 `POST /api/v1/timeline` accepts optional inclusive ISO `start_date` and
 `end_date` values. The response separates chronologically sorted `events` from
