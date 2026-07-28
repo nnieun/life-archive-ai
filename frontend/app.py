@@ -1,28 +1,27 @@
-"""Streamlit entry point for the MVP interface."""
-
-from os import getenv
+"""Streamlit entry point for the Life Archive AI MVP."""
 
 import streamlit as st
 from dotenv import load_dotenv
 
-from frontend.api_client import ApiClientError, LifeArchiveApiClient
-
 load_dotenv()
 
-st.set_page_config(page_title="Life Archive AI", page_icon="🧠")
-st.title("Life Archive AI")
-st.caption("Memory-Centric RAG")
+st.set_page_config(
+    page_title="Life Archive AI",
+    page_icon="🗃️",
+    layout="wide",
+)
 
-api_url = getenv("LIFE_ARCHIVE_API_URL", "http://127.0.0.1:8000/api/v1")
-st.subheader("API 상태")
-
-try:
-    health = LifeArchiveApiClient(base_url=api_url).get_health()
-except ApiClientError:
-    st.error("Backend API에 연결할 수 없습니다.")
-else:
-    st.success(f"{health.service} API가 정상입니다.")
-    st.json(health.model_dump())
-
-if st.button("상태 새로고침"):
-    st.rerun()
+navigation = st.navigation(
+    [
+        st.Page("pages/upload.py", title="업로드", icon=":material/upload_file:"),
+        st.Page("pages/memories.py", title="기억", icon=":material/book_2:"),
+        st.Page("pages/chat.py", title="대화", icon=":material/chat:"),
+        st.Page("pages/timeline.py", title="타임라인", icon=":material/timeline:"),
+        st.Page(
+            "pages/autobiography.py",
+            title="자서전",
+            icon=":material/auto_stories:",
+        ),
+    ]
+)
+navigation.run()

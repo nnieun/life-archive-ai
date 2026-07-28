@@ -178,6 +178,11 @@ Health check: `GET http://127.0.0.1:8000/api/v1/health`
 .\scripts\run_frontend.ps1
 ```
 
+The Streamlit MVP provides five pages: TXT upload, structured memories,
+grounded chat, timeline, and autobiography generation. Start the backend
+before the frontend. Uploaded TXT originals are created under
+`data/raw/transcripts` and are never overwritten.
+
 ---
 
 # Evaluation

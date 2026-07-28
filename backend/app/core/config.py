@@ -23,6 +23,7 @@ class Settings(BaseModel):
     openai_embedding_model: str = "text-embedding-3-small"
     sqlite_database_path: Path = Path("data/db/life_archive.sqlite3")
     chroma_persist_directory: Path = Path("data/indexes/chroma")
+    transcript_upload_directory: Path = Path("data/raw/transcripts")
 
 
 @lru_cache(maxsize=1)
@@ -40,5 +41,8 @@ def get_settings() -> Settings:
         ),
         chroma_persist_directory=Path(
             getenv("CHROMA_PERSIST_DIRECTORY", "data/indexes/chroma")
+        ),
+        transcript_upload_directory=Path(
+            getenv("TRANSCRIPT_UPLOAD_DIRECTORY", "data/raw/transcripts")
         ),
     )
