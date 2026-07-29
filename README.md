@@ -35,7 +35,7 @@ TXT 형식의 STT 대화 기록을 업로드하면 다음 과정을 거칩니다
 
 ## 2. 시스템 아키텍처
 
-<img width="1600" height="1040" alt="image" src="https://github.com/user-attachments/assets/58bde2d1-3b18-4706-a423-111e0afd7208" />
+<img width="1600" height="1040" alt="image" src="https://github.com/user-attachments/assets/7b0839a9-e7d8-429b-9757-f8d16ef7573e" />
 
 
 시스템은 크게 네 부분으로 구성됩니다.
