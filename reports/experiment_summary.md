@@ -1,18 +1,20 @@
 # Retrieval Evaluation Summary
 
-## Scope
+## 평가 범위 (Scope)
 
-- Dataset: `synthetic-life-memories-v1`
-- Synthetic memories: 12
-- Evaluation queries: 8
-- Chunk candidates: 256, 512, 1024 characters, event-aware
-- Search candidates: dense similarity, MMR, BM25, hybrid RRF
-- Top-K values: 3, 5, 10
-- No OpenAI API or personal transcript was used.
+- 데이터셋: `synthetic-life-memories-v1`
+- 생성된 기억 데이터: **12개**
+- 평가 질의: **8개**
+- Chunk 후보: **256, 512, 1024 문자, Event-aware**
+- 검색 방식: **Dense Similarity, MMR, BM25, Hybrid(RRF)**
+- Top-K 후보: **3, 5, 10**
+- OpenAI API 및 실제 사용자 대화 기록은 사용하지 않음
 
-## Aggregate Results
+---
 
-| Chunk | Search | K | Recall@K | Citation | Unsupported | Retrieval ms | E2E ms |
+## 종합 결과 (Aggregate Results)
+
+| Chunk | Search | K | Recall@K | Citation | Unsupported | Retrieval (ms) | E2E (ms) |
 |---|---|---:|---:|---:|---:|---:|---:|
 | 1024 | bm25 | 3 | 0.500 | 0.250 | 0.750 | 0.5323 | 0.5326 |
 | 1024 | bm25 | 5 | 0.750 | 0.250 | 0.750 | 0.5323 | 0.5325 |
@@ -63,28 +65,50 @@
 | event_aware | mmr | 5 | 0.875 | 0.750 | 0.250 | 4.7538 | 4.7540 |
 | event_aware | mmr | 10 | 1.000 | 0.750 | 0.250 | 4.7538 | 4.7540 |
 
-## Best Observed Configuration
+---
 
-- Chunk: `event_aware`
-- Search: `dense`
-- Top-K: `3`
-- Recall@K: `1.000`
-- Citation correctness: `0.750`
-- Unsupported answer rate: `0.250`
+## 최적 구성 (Best Observed Configuration)
 
-## Reproduction
+- **Chunk 방식:** `event_aware`
+- **검색 방식:** `dense`
+- **Top-K:** `3`
+- **Recall@K:** **1.000**
+- **Citation 정확도:** **0.750**
+- **근거 없는 응답 비율(Unsupported Answer Rate):** **0.250**
+
+### 결과 분석
+
+실험 결과 **Event-aware Chunking**과 **Dense Retrieval**을 사용하고 **Top-K를 3**으로 설정한 조합이 가장 우수한 성능을 보였다.
+
+- 모든 평가 질의에서 필요한 기억을 검색하여 **Recall@K 1.000**을 달성하였다.
+- 생성된 답변의 **75%가 올바른 근거를 인용**하였다.
+- **근거 없는 응답 비율은 25%**로, 일부 답변에서는 검색 결과에 없는 내용을 포함하였다.
+- Top-K를 5 또는 10으로 증가시켜도 Recall은 향상되지 않아, 불필요한 검색 결과만 늘어나는 경향을 확인하였다.
+
+따라서 본 프로젝트에서는 **Event-aware Chunking + Dense Retrieval + Top-K=3**을 기본 검색 설정으로 사용하였다.
+
+---
+
+## 재현 방법 (Reproduction)
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\run_evaluation.py
 ```
 
-- Python: `3.13.14`
-- Rankings and quality metrics are deterministic for this dataset.
-- Latency is measured locally and can vary by machine and background load.
-- Failed query rows remain in both CSV files with zero quality scores.
+### 실행 환경
 
-## Limitations
+- Python: **3.13.14**
 
-- Dense similarity uses deterministic lexical-semantic aliases instead of an external embedding API.
-- Generation evaluation uses a deterministic grounded-answer simulator, not an LLM.
-- Results compare MVP settings on a small synthetic corpus and are not a claim about production accuracy.
+### 참고 사항
+
+- 검색 순위와 품질 평가는 해당 데이터셋에서 **결정론적(Deterministic)** 으로 수행된다.
+- 검색 및 전체 응답 시간은 로컬 환경에서 측정되었으며, 실행 환경이나 시스템 부하에 따라 달라질 수 있다.
+- 검색에 실패한 질의도 결과 CSV 파일에 기록되며, 품질 점수는 0으로 저장된다.
+
+---
+
+## 한계 (Limitations)
+
+- Dense Similarity는 외부 임베딩 API 대신 **결정론적 Lexical-Semantic Alias**를 사용하여 구현하였다.
+- 답변 생성 평가는 실제 LLM이 아닌 **Grounded Answer Simulator**를 사용하였다.
+- 본 평가는 **소규모 Synthetic Dataset 기반 MVP 성능 비교**를 위한 것으로, 실제 서비스 환경의 성능을 직접 보장하지는 않는다.
