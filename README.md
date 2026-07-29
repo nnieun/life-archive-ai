@@ -31,33 +31,7 @@
 
 ## 시스템 아키텍처
 
-```mermaid
-flowchart LR
-    U[사용자] --> S[Streamlit]
-    S --> A[FastAPI]
-    A --> I[일반 Python 서비스]
-    A --> G[LangGraph]
-    I --> DB[(SQLite<br/>Source of Truth)]
-    I --> C[(ChromaDB)]
-    I --> B[BM25]
-    G --> R[Hybrid Retriever]
-    R --> DB
-    R --> C
-    R --> B
-    G --> O[OpenAI]
-```
-
-```mermaid
-flowchart TD
-    TXT[STT TXT] --> LOAD[검증·정규화]
-    LOAD --> CHUNK[출처 보존 청킹]
-    CHUNK --> MEMORY[구조화 기억 추출]
-    MEMORY --> SQLITE[(SQLite)]
-    SQLITE --> INDEX[Chroma + BM25]
-    INDEX --> QA[근거 기반 QA]
-    SQLITE --> TIMELINE[타임라인]
-    INDEX --> AUTOBIO[자서전]
-```
+<img width="1600" height="1040" alt="image" src="https://github.com/user-attachments/assets/7b0839a9-e7d8-429b-9757-f8d16ef7573e" />
 
 LangGraph는 근거 기반 QA와 자서전 생성에만 사용합니다. 업로드, 청킹,
 CRUD, 인덱싱, 타임라인 정렬은 일반 Python 서비스입니다.
