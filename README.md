@@ -80,7 +80,7 @@ flowchart TD
 | HTTP Client      | HTTPX                  | Streamlit과 FastAPI 통신     |
 | Testing          | pytest                 | 서비스, API, UI 테스트          |
 
-> MMR과 청크 크기 비교는 현재 검색 구조와 구분해 `Evaluation` 항목에 두는 것이 좋습니다.
+
 
 ## 4. 데이터 개요
 
