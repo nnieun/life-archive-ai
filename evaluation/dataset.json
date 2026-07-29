@@ -1,0 +1,96 @@
+{
+  "dataset_id": "synthetic-life-memories-v1",
+  "description": "평가를 위해 작성한 완전한 합성 기억 데이터이며 실제 인물이나 사건을 포함하지 않는다.",
+  "events": [
+    {
+      "memory_id": "eval_school_entrance",
+      "text": "2007년 봄, 가상의 화자는 새봄중학교 입학식에 참석했다. 교문 앞에서 담임 선생님을 처음 만났고, 교실 창가 자리에 앉아 새 공책에 시간표를 적었다. 낯선 환경이라 긴장했지만 점심시간에 같은 반 학생과 운동장을 걸으며 학교생활을 시작했다."
+    },
+    {
+      "memory_id": "eval_school_graduation",
+      "text": "2010년 겨울, 가상의 화자는 새봄중학교 졸업식에 참석했다. 가족이 강당 뒤편에서 졸업 사진을 찍어 주었고, 친구들과 운동장에서 다시 만나기로 약속했다. 졸업장을 받은 뒤 교실을 한 번 둘러보고 선생님께 감사 인사를 전했다."
+    },
+    {
+      "memory_id": "eval_first_job",
+      "text": "2014년 여름, 가상의 화자는 한빛디자인에 첫 출근을 했다. 오전에는 사원증을 받고 작업 도구 사용법을 배웠으며, 오후에는 작은 포스터 시안을 정리했다. 첫 직장이라 서툴렀지만 동료가 파일 정리 방법을 알려 주어 업무를 마칠 수 있었다."
+    },
+    {
+      "memory_id": "eval_cooking_class",
+      "text": "2015년 가을, 가상의 화자는 토요일마다 마을 요리 교실에 다녔다. 첫 수업에서는 가족과 함께 먹을 김치찌개를 만들었고, 재료를 넣는 순서와 불 조절 방법을 공책에 기록했다. 완성한 음식을 집으로 가져가 저녁 식탁에서 나누어 먹었다."
+    },
+    {
+      "memory_id": "eval_beach_trip",
+      "text": "2016년 여름, 가상의 화자는 가족과 푸른해변으로 여행을 갔다. 아침에는 바닷가 산책로를 걸었고 오후에는 모래사장에서 조개껍데기를 찾았다. 비가 올 가능성이 있어 멀리 나가지는 않았으며, 숙소 창문에서 파도 소리를 들으며 하루를 마무리했다."
+    },
+    {
+      "memory_id": "eval_mountain_hike",
+      "text": "2017년 가을, 가상의 화자는 친구 두 명과 단풍산을 등산했다. 출발 전 등산 지도를 확인하고 정상까지 천천히 걸었으며, 중간 쉼터에서 준비한 주먹밥을 먹었다. 정상에서는 붉게 물든 숲을 사진으로 남긴 뒤 같은 길로 안전하게 내려왔다."
+    },
+    {
+      "memory_id": "eval_house_move",
+      "text": "2018년 봄, 가상의 화자는 햇살동으로 이사했다. 이삿짐 상자에 방별 이름표를 붙였고 새 집에 도착한 뒤 책과 주방용품부터 정리했다. 저녁에는 가까운 시장의 위치를 확인하고 가족과 새 동네 골목을 짧게 걸었다."
+    },
+    {
+      "memory_id": "eval_volunteer_library",
+      "text": "2019년부터 가상의 화자는 동네 도서관에서 월 1회 봉사했다. 반납된 책을 분류하고 어린이 자료실의 서가 번호를 정리했으며, 처음 방문한 이용자에게 대출 기계 사용법을 안내했다. 봉사 일정은 도서관 게시판에서 미리 확인했다."
+    },
+    {
+      "memory_id": "eval_online_course",
+      "text": "2020년 봄, 가상의 화자는 집에서 온라인 프로그래밍 강의를 들었다. 매주 작은 파이썬 예제를 작성하고 오류 메시지를 학습 노트에 정리했다. 마지막 주에는 일정 관리 프로그램을 완성해 수료 과제로 제출했다."
+    },
+    {
+      "memory_id": "eval_garden_project",
+      "text": "2021년 봄, 가상의 화자는 아파트 공동 텃밭에 토마토와 상추를 심었다. 이웃과 물 주는 요일을 나누고 성장 기록을 표로 남겼다. 여름에 첫 토마토를 수확했지만 일부 상추는 비 때문에 잘 자라지 않았다고 기록했다."
+    },
+    {
+      "memory_id": "eval_train_trip",
+      "text": "2022년 겨울, 가상의 화자는 눈빛시로 기차 여행을 갔다. 오전 열차를 타고 도착해 역사 박물관을 관람했으며, 저녁에는 역 근처 식당에서 따뜻한 국수를 먹었다. 폭설 예보를 확인해 다음 날 이른 열차로 돌아왔다."
+    },
+    {
+      "memory_id": "eval_running_event",
+      "text": "2023년 가을, 가상의 화자는 강변 10킬로미터 달리기 행사에 참가했다. 한 달 동안 주말마다 거리를 늘려 연습했고 행사 당일에는 기록보다 완주를 목표로 달렸다. 결승선을 통과한 뒤 함께 연습한 동료와 물을 마시며 쉬었다."
+    }
+  ],
+  "queries": [
+    {
+      "query_id": "q_school_graduation",
+      "question": "중학교를 마친 날에는 무슨 일이 있었나?",
+      "relevant_memory_ids": ["eval_school_graduation"]
+    },
+    {
+      "query_id": "q_first_work",
+      "question": "처음 회사에 출근해서 어떤 일을 했나?",
+      "relevant_memory_ids": ["eval_first_job"]
+    },
+    {
+      "query_id": "q_seaside",
+      "question": "바닷가에서 가족과 보낸 여행은 어땠나?",
+      "relevant_memory_ids": ["eval_beach_trip"]
+    },
+    {
+      "query_id": "q_relocation",
+      "question": "새 동네로 거처를 옮긴 뒤 무엇을 정리했나?",
+      "relevant_memory_ids": ["eval_house_move"]
+    },
+    {
+      "query_id": "q_library",
+      "question": "책을 분류하며 봉사한 장소는 어디였나?",
+      "relevant_memory_ids": ["eval_volunteer_library"]
+    },
+    {
+      "query_id": "q_programming",
+      "question": "비대면 수업에서 어떤 코딩 과제를 완성했나?",
+      "relevant_memory_ids": ["eval_online_course"]
+    },
+    {
+      "query_id": "q_gardening",
+      "question": "공동 텃밭에서 재배하고 수확한 것은 무엇인가?",
+      "relevant_memory_ids": ["eval_garden_project"]
+    },
+    {
+      "query_id": "q_running",
+      "question": "강변 마라톤을 앞두고 어떻게 준비했나?",
+      "relevant_memory_ids": ["eval_running_event"]
+    }
+  ]
+}
