@@ -76,6 +76,55 @@ life-archive-ai/
 ├─ scripts/         # 실행·데이터 검사·평가 스크립트
 └─ tests/           # 단위·통합·UI 테스트
 ```
+## 에이전트 흐름도
+
+### 근거 기반 질문 답변
+
+```mermaid
+flowchart TD
+    START([질문 입력]) --> RETRIEVE[Hybrid Retrieval]
+    RETRIEVE --> CHECK{근거가 충분한가?}
+
+    CHECK -- 아니요 --> REJECT[답변 거절]
+    CHECK -- 예 --> GENERATE[인용 포함 답변 생성]
+
+    GENERATE --> VERIFY{근거 검증 통과?}
+    VERIFY -- 예 --> FINAL[최종 답변 저장]
+    VERIFY -- 아니요 --> REWRITE[한 번만 수정]
+
+    REWRITE --> VERIFY2{재검증 통과?}
+    VERIFY2 -- 예 --> FINAL
+    VERIFY2 -- 아니요 --> REJECT
+```
+
+질문 답변 에이전트는 다음 원칙을 따릅니다.
+
+* ChromaDB 의미 검색과 BM25 검색 결과를 RRF로 결합합니다.
+* 선택된 기억에 포함되지 않은 `memory_id`는 인용할 수 없습니다.
+* 생성된 주장마다 하나 이상의 기억 출처가 필요합니다.
+* 검증 실패 시 답변을 한 번만 수정합니다.
+* 재검증도 실패하면 생성된 초안을 사용자에게 반환하지 않습니다.
+
+### 자서전 생성
+
+```mermaid
+flowchart TD
+    START([생성 요청]) --> RETRIEVE[관련 기억 검색]
+    RETRIEVE --> TIMELINE[기억 타임라인 구성]
+    TIMELINE --> PLAN[1~3개 장 구성]
+    PLAN --> WRITE[현재 장 작성]
+    WRITE --> VERIFY{출처 검증}
+
+    VERIFY -- 통과 --> SAVE[검증된 장 저장]
+    VERIFY -- 실패 --> REVISE[한 번만 수정]
+    REVISE --> VERIFY2{재검증}
+
+    VERIFY2 -- 통과 --> SAVE
+    VERIFY2 -- 실패 --> DRAFT[검증된 장만 초안으로 유지]
+    SAVE --> NEXT{남은 장이 있는가?}
+    NEXT -- 예 --> WRITE
+    NEXT -- 아니요 --> COMPLETE[자서전 완성]
+```
 
 ## 설치
 
