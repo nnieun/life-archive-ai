@@ -10,8 +10,8 @@ st.caption("SQLite에 저장된 기억, 불확실성, 원문 위치를 확인합
 
 try:
     memories = get_api_client().list_memories()
-except ApiClientError:
-    show_backend_error("기억 조회")
+except ApiClientError as exception:
+    show_backend_error("기억 조회", exception)
 else:
     if not memories:
         st.info("아직 저장된 기억이 없습니다. 먼저 TXT 파일을 업로드해 주세요.")

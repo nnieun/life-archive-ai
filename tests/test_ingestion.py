@@ -22,6 +22,7 @@ from backend.app.models.memory import (
 )
 from backend.app.models.vector import MemoryIndexResult
 from backend.app.services.ingestion import (
+    IngestionError,
     TranscriptIngestionService,
     UploadConflictError,
 )
@@ -109,6 +110,21 @@ def test_existing_raw_filename_is_not_overwritten(ingestion_storage) -> None:
         service.ingest(filename="memory.txt", content="다른 내용입니다.".encode())
 
     assert (raw_root / "memory.txt").read_bytes() == original
+
+
+def test_chroma_failure_becomes_safe_ingestion_error(
+    ingestion_storage,
+) -> None:
+    service, _repository, vector_index, _raw_root = ingestion_storage
+    vector_index.index_memory = Mock(  # type: ignore[method-assign]
+        side_effect=RuntimeError(r"index missing C:\private\chroma")
+    )
+
+    with pytest.raises(IngestionError, match="Memory index update failed"):
+        service.ingest(
+            filename="index-failure.txt",
+            content="친구와 공원에서 만나서 즐거운 하루였다.".encode(),
+        )
 
 
 def test_ingest_and_memory_list_api_return_citations(

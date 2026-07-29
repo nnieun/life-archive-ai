@@ -45,6 +45,24 @@ def test_backend_failure_shows_user_safe_message(api_client: Mock) -> None:
     assert "private detail" not in app.error[0].value
 
 
+def test_service_failure_shows_request_id_without_private_detail(
+    api_client: Mock,
+) -> None:
+    api_client.list_memories.side_effect = ApiClientError(
+        r"sk-private C:\Users\person\memory.txt",
+        status_code=503,
+        request_id="req-ui-123",
+    )
+
+    app = AppTest.from_file("frontend/pages/memories.py").run()
+
+    assert len(app.error) == 1
+    assert "서비스를 현재 사용할 수 없습니다" in app.error[0].value
+    assert any("req-ui-123" in caption.value for caption in app.caption)
+    assert "sk-private" not in str(app)
+    assert r"C:\Users\person" not in str(app)
+
+
 def test_txt_upload_displays_processing_and_index_result(
     api_client: Mock,
 ) -> None:

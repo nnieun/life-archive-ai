@@ -10,6 +10,7 @@ from backend.app.api.privacy import router as privacy_router
 from backend.app.api.timeline import router as timeline_router
 from backend.app.core.config import get_settings
 from backend.app.core.errors import register_error_handlers
+from backend.app.core.request_context import RequestContextMiddleware
 
 
 def create_app() -> FastAPI:
@@ -20,6 +21,7 @@ def create_app() -> FastAPI:
         version=settings.app_version,
         description="Memory-centric retrieval and grounded generation API",
     )
+    application.add_middleware(RequestContextMiddleware)
     register_error_handlers(application)
     application.include_router(health_router, prefix=settings.api_prefix)
     application.include_router(memories_router, prefix=settings.api_prefix)

@@ -129,9 +129,31 @@ class ApiClientError(RuntimeError):
         message: str,
         *,
         status_code: int | None = None,
+        request_id: str | None = None,
     ) -> None:
         super().__init__(message)
         self.status_code = status_code
+        self.request_id = request_id
+
+
+def _api_error(
+    response: httpx.Response,
+    message: str,
+) -> ApiClientError:
+    """Read only the safe request ID from a backend error response."""
+
+    request_id = response.headers.get("X-Request-ID")
+    try:
+        error = response.json().get("error", {})
+        if isinstance(error, dict) and isinstance(error.get("request_id"), str):
+            request_id = error["request_id"]
+    except (ValueError, AttributeError):
+        pass
+    return ApiClientError(
+        message,
+        status_code=response.status_code,
+        request_id=request_id,
+    )
 
 
 class LifeArchiveApiClient:
@@ -166,10 +188,7 @@ class LifeArchiveApiClient:
                 response.raise_for_status()
                 return response_model.model_validate(response.json())
         except httpx.HTTPStatusError as exception:
-            raise ApiClientError(
-                error_message,
-                status_code=exception.response.status_code,
-            ) from exception
+            raise _api_error(exception.response, error_message) from exception
         except (httpx.HTTPError, ValueError, ValidationError) as exception:
             raise ApiClientError(error_message) from exception
 
@@ -221,10 +240,7 @@ class LifeArchiveApiClient:
                     for item in response.json()
                 ]
         except httpx.HTTPStatusError as exception:
-            raise ApiClientError(
-                "Memory lookup failed",
-                status_code=exception.response.status_code,
-            ) from exception
+            raise _api_error(exception.response, "Memory lookup failed") from exception
         except (httpx.HTTPError, ValueError, ValidationError) as exception:
             raise ApiClientError("Memory lookup failed") from exception
 

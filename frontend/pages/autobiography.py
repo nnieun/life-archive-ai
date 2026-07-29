@@ -43,8 +43,8 @@ if submitted:
                     target_topics=list(dict.fromkeys(topics)),
                     chapter_count=chapter_count,
                 )
-            except ApiClientError:
-                show_backend_error("자서전 생성")
+            except ApiClientError as exception:
+                show_backend_error("자서전 생성", exception)
             else:
                 if result.error:
                     st.warning(result.error)

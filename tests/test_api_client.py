@@ -30,12 +30,25 @@ def test_health_client_parses_response() -> None:
 
 def test_health_client_returns_safe_error() -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
-        return httpx.Response(503)
+        return httpx.Response(
+            503,
+            headers={"X-Request-ID": "req-health"},
+            json={
+                "error": {
+                    "code": "storage_error",
+                    "message": "Storage service is unavailable",
+                    "request_id": "req-health",
+                }
+            },
+        )
 
     client = LifeArchiveApiClient(transport=httpx.MockTransport(handler))
 
-    with pytest.raises(ApiClientError, match="Backend health check failed"):
+    with pytest.raises(ApiClientError, match="Backend health check failed") as captured:
         client.get_health()
+
+    assert captured.value.status_code == 503
+    assert captured.value.request_id == "req-health"
 
 
 def test_upload_client_preserves_original_bytes() -> None:

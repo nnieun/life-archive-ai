@@ -1,678 +1,179 @@
-# SQLite, ChromaDB, LangChain Document, Pydantic 모델 정의
+# Life Archive AI 데이터 모델
 
-# DATA_MODEL.md
+## 1. 저장 원칙
 
-# Life Archive AI Data Model
+SQLite는 유일한 Source of Truth다. ChromaDB와 BM25는 활성 SQLite
+기억으로 다시 만들 수 있는 검색 인덱스이며 비즈니스 데이터의 영구
+저장소가 아니다.
 
----
+## 2. Transcript
 
-# 1. Overview
+외부 STT가 만든 업로드 기록이다.
 
-Life Archive AI stores information in two different storage systems.
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `transcript_id` | str | `tr_` 기반 결정적 ID |
+| `filename` | str | 안전한 TXT 파일명 |
+| `recording_id` | str \| null | 선택적 외부 녹음 ID |
+| `language` | str \| null | 언어 metadata |
+| `source_type` | str | 입력 유형 |
+| `uploaded_at` | datetime | 업로드 시각 |
+| `recorded_at` | datetime \| null | 녹음 시각, 사건 날짜로 사용하지 않음 |
+| `content_hash` | str | 중복 방지 SHA-256 |
+| `raw_content` | str | UTF-8로 decode한 원문 |
+| `normalized_content` | str | 후속 처리용 정규화 본문 |
+| `created_at`, `updated_at`, `deleted_at` | datetime | 수명주기 |
 
-SQLite
+raw 파일은 `data/raw/transcripts`에 불변으로 저장되며 SQLite의
+`raw_content`도 normalized content와 분리된다.
 
-↓
+## 3. Transcript Segment
 
-Business Data
+| 필드 | 타입 | 규칙 |
+|---|---|---|
+| `segment_id` | str | PK |
+| `transcript_id` | str | transcript FK |
+| `chunk_index` | int | transcript 내 0부터 시작, unique |
+| `content` | str | 정규화 본문의 해당 slice |
+| `start_offset` | int | 포함 시작점 |
+| `end_offset` | int | 제외 끝점 |
 
-ChromaDB
-
-↓
-
-Retrieval Index
-
-SQLite is the only Source of Truth.
-
-ChromaDB can always be rebuilt from SQLite.
-
----
-
-# 2. Data Pipeline
-
-```text
-Transcript
-
-↓
-
-Chunk
-
-↓
-
-Memory
-
-↓
-
-Embedding
-
-↓
-
-Hybrid Retrieval
-
-↓
-
-Timeline
-
-↓
-
-Autobiography
-```
-
----
-
-# 3. Transcript Model
-
-Original STT transcript.
+항상 다음을 만족해야 한다.
 
 ```python
-class Transcript(BaseModel):
-
-    transcript_id: str
-
-    filename: str
-
-    recording_id: str | None
-
-    language: str | None
-
-    source_type: str
-
-    uploaded_at: datetime
-
-    recorded_at: datetime | None
-
-    content_hash: str
-
-    raw_content: str
-
-    normalized_content: str
-```
-
-`uploaded_at` records ingestion time. `recorded_at` is source recording metadata.
-Neither field is treated as the remembered event date. Event dates are extracted
-later into structured Memory records and may remain unknown.
-
-The raw content is preserved exactly as decoded from UTF-8. Normalized content is
-stored separately for downstream processing.
-
-SQLite Table
-
-```text
-transcripts
-
-----------------------------
-
-transcript_id
-
-filename
-
-recording_id
-
-language
-
-source_type
-
-uploaded_at
-
-recorded_at
-
-content_hash
-
-raw_content
-
-normalized_content
-
-created_at
-
-updated_at
-
-deleted_at
-```
-
----
-
-# 4. Chunk Model
-
-Each transcript is divided into chunks.
-
-```python
-class Chunk(BaseModel):
-
-    segment_id: str
-
-    transcript_id: str
-
-    chunk_index: int
-
-    content: str
-
-    start_offset: int
-
-    end_offset: int
-```
-
-SQLite
-
-```text
-transcript_segments
-
-----------------------------
-
-segment_id
-
-transcript_id
-
-chunk_index
-
-content
-
-start_offset
-
-end_offset
-
-created_at
-
-updated_at
-
-deleted_at
-```
-
-`start_offset` is inclusive and `end_offset` is exclusive. Both offsets refer
-to `Transcript.normalized_content`, and every persisted chunk must satisfy:
-
-```python
-chunk.content == transcript.normalized_content[
-    chunk.start_offset:chunk.end_offset
+segment.content == transcript.normalized_content[
+    segment.start_offset:segment.end_offset
 ]
 ```
 
-The fixed-size chunker supports character units by default and
-whitespace-delimited token units when explicitly selected. Validated
-`chunk_size` and `chunk_overlap` settings ensure overlap is smaller than the
-chunk size. Initial comparison sizes are 256, 512, and 1024 units.
-Event-aware chunking is recorded as a later evaluation candidate and is not
-used to infer event boundaries during deterministic ingestion.
+기본 청커는 고정 문자 크기와 overlap을 사용하며 token 단위도 지원한다.
+이벤트 인식 청킹은 평가 후보이며 수집 시 사건을 임의로 추론하지 않는다.
 
----
+## 4. Memory
 
-# 5. Memory Model
+대화에서 추출한 사건 단위 기억이다.
 
-Core model of this project.
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `memory_id` | str | PK |
+| `transcript_id` | str | 원본 transcript FK |
+| `title` | str | 짧은 사건 제목 |
+| `summary` | str | 근거 범위 안의 요약 |
+| `people` | list[str] | 확인된 사람 |
+| `location` | str \| null | 확인된 장소 |
+| `event_date` | str \| null | 원문 정밀도를 유지한 날짜 |
+| `date_precision` | enum | exact/day/month/year/approximate/unknown |
+| `emotion` | str \| null | 확인된 감정 |
+| `confidence` | float | 0.0~1.0 |
+| `uncertainty_notes` | str \| null | 낮은 신뢰도나 모호성 |
+| `status` | enum | active/corrected/deleted |
+| `supersedes_memory_id` | str \| null | 수정으로 대체한 기억 |
 
-```python
-class Memory(BaseModel):
+`event_date`가 null이면 `date_precision`은 `unknown`이어야 한다. 모델이
+반환한 segment 내부 evidence offset을 검증한 뒤 절대 transcript offset으로
+변환하여 memory와 source를 한 transaction에 저장한다.
 
-    memory_id: str
+## 5. Memory Source와 Citation
 
-    transcript_id: str
-
-    title: str
-
-    summary: str
-
-    people: list[str]
-
-    location: str | None
-
-    event_date: str | None
-
-    date_precision: str
-
-    emotion: str | None
-
-    confidence: float
-
-    uncertainty_notes: str | None
-
-    status: str
-```
-
-SQLite
-
-```text
-memories
-
------------------------------------
-
-memory_id
-
-transcript_id
-
-title
-
-summary
-
-people_json
-
-location
-
-event_date
-
-date_precision
-
-emotion
-
-confidence
-
-uncertainty_notes
-
-status
-
-supersedes_memory_id
-
-created_at
-
-updated_at
-
-deleted_at
-```
-
-Status
-
-- active
-
-- corrected
-
-- deleted
-
-`people` is serialized to `people_json` TEXT and validated as `list[str]` by
-Pydantic. Deleted memories remain stored but are excluded from default queries.
-
-`date_precision` is one of `exact`, `day`, `month`, `year`, `approximate`, or
-`unknown`. Unknown dates keep `event_date` null. Partial and approximate dates
-remain strings so ingestion never invents missing month, day, or time values.
-Low-confidence and approximate extractions retain an `uncertainty_notes` value.
-
-Memory extraction uses OpenAI Structured Outputs with a strict Pydantic batch
-schema. Evidence offsets returned for a segment are validated and converted to
-absolute normalized-transcript offsets before the memory and its
-`memory_sources` row are saved in one SQLite transaction.
-
----
-
-# 5.1 Memory Source Model
-
-Memory evidence is stored separately so every structured memory remains
-traceable to transcript offsets and, when available, one segment.
+기억과 원문 구간의 연결이다.
 
 ```python
-class MemorySource(BaseModel):
-
-    memory_source_id: str
-
+class CitationRecord:
     memory_id: str
-
     transcript_id: str
-
     segment_id: str | None
-
     start_offset: int
-
     end_offset: int
 ```
 
-SQLite table: `memory_sources`.
+`memory_sources`에는 별도 `memory_source_id`와 timestamps가 추가된다.
+모든 offset은 normalized transcript의 반열림 범위다.
 
----
+## 6. Conversation
 
-# 6. Citation Model
+`conversation_sessions`:
 
-Every generated answer must contain citations.
+- `session_id`, `title`
+- `created_at`, `updated_at`, `deleted_at`
+
+`conversation_messages`:
+
+- `message_id`, `session_id`
+- `role`: system/user/assistant
+- `content`
+- `citations_json`: Pydantic으로 검증되는 citation 목록
+- timestamps와 `deleted_at`
+
+삭제된 기억을 인용한 message는 개인정보 삭제 흐름에서 논리 삭제된다.
+
+## 7. Timeline
+
+Timeline은 별도 영구 테이블이 아니라 현재 SQLite memory에서 계산되는
+응답 모델이다.
 
 ```python
-class Citation(BaseModel):
-
+class TimelineEvent:
     memory_id: str
-
     transcript_id: str
-
-    chunk_id: str
-
-    start_offset: int
-
-    end_offset: int
-```
-
----
-
-# 7. Timeline Model
-
-```python
-class TimelineEvent(BaseModel):
-
-    memory_id: str
-
-    transcript_id: str
-
-    event_date: str | None
-
-    date_precision: DatePrecision
-
-    date_label: str
-
     title: str
-
     description: str
-
+    event_date: str | None
+    date_precision: DatePrecision
+    date_label: str
+    people: list[str]
+    location: str | None
+    emotion: str | None
+    confidence: float
+    uncertainty_notes: str | None
     status: MemoryStatus
-
     citations: list[CitationRecord]
 ```
 
-Timeline responses contain `events` and `undated_events`. Dated events are
-sorted by the earliest supported date without filling in unknown date parts.
-Unknown dates and approximate values that cannot be interpreted are kept in
-`undated_events`.
+`TimelineResult`는 `events`, `undated_events`, 선택적 `start_date`,
+`end_date`를 포함한다.
 
-Corrected memories suppress the records named by `supersedes_memory_id`.
-Deleted memories and memories without a traceable source are not returned.
-Every citation includes the transcript ID and half-open source offset range.
+## 8. Autobiography
 
----
+`autobiographies` 테이블:
 
-# 8. Conversation Model
+| 필드 | 설명 |
+|---|---|
+| `autobiography_id` | PK |
+| `title` | 사용자 제목 |
+| `content_json` | 최대 3개의 typed chapter |
+| `status` | draft/completed/deleted |
+| timestamps | 생성·수정·논리 삭제 |
 
-```python
-class ConversationSession(BaseModel):
+각 chapter는 `title`, `content`, `citations`를 가진다. 생성 시작 시 빈
+draft를 저장하고, 검증된 장만 누적 저장하며 요청한 모든 장이 통과하면
+`completed`가 된다.
 
-    session_id: str
-
-    created_at: datetime
-```
-
-```python
-class Message(BaseModel):
-
-    message_id: str
-
-    session_id: str
-
-    role: str
-
-    content: str
-
-    created_at: datetime
-```
-
-SQLite
+## 9. Chroma 모델
 
 ```text
-conversation_sessions
-
-conversation_messages
+id: memory_id
+document: memory.title + memory.summary
+embedding: embedding provider output
+metadata:
+  memory_id
+  embedding_version
+  content_hash
 ```
 
-Conversation message citations are stored as JSON TEXT and validated as a list
-of typed citation records before writing and after reading.
+사람, 장소, 날짜와 같은 비즈니스 metadata는 Chroma를 기준으로 읽지
+않는다. 검색 결과는 `memory_id`와 distance를 사용해 SQLite에서 현재
+MemoryRecord를 다시 불러온다.
 
----
+## 10. 삭제 수명주기
 
-# 9. Autobiography Model
-
-```python
-class Chapter(BaseModel):
-
-    title: str
-
-    content: str
-
-    citations: list[Citation]
+```mermaid
+flowchart TD
+    T[Transcript] --> S[Segments soft delete]
+    T --> M[Memories soft delete]
+    M --> C[인용 Conversation soft delete]
+    M --> A[인용 Autobiography soft delete]
+    M --> V[Chroma vectors delete]
+    V --> B[BM25 rebuild]
 ```
 
-```python
-class Autobiography(BaseModel):
-
-    autobiography_id: str
-
-    title: str
-
-    chapters: list[Chapter]
-
-    created_at: datetime
-```
-
-SQLite
-
-```text
-autobiographies
-
------------------------------------
-
-autobiography_id
-
-title
-
-content_json
-
-created_at
-
-updated_at
-
-status
-
-deleted_at
-```
-
-Autobiography content is JSON TEXT validated by Pydantic. MVP content is limited
-to at most three typed chapters.
-
-Generation first stores an empty `draft`. Each chapter is produced as
-structured paragraphs with one or more supporting `memory_id` values. After
-verification, those IDs are converted to `CitationRecord` values and the
-accumulated chapter list is written back to `content_json`. Only a fully
-verified requested chapter set changes the status to `completed`.
-
-If a chapter still fails after one revision, the unverified chapter is not
-stored. Any earlier verified chapters remain available in the draft.
-
----
-
-# 10. LangChain Document
-
-Each chunk becomes one Document.
-
-```python
-Document(
-
-    page_content="...",
-
-    metadata={
-
-        "memory_id": "...",
-
-        "transcript_id": "...",
-
-        "chunk_id": "...",
-
-        "event_date": "...",
-
-        "people": [...],
-
-        "location": "...",
-
-    }
-
-)
-```
-
----
-
-# 11. Chroma Metadata
-
-Only retrieval metadata is stored.
-
-```text
-id
-
-embedding
-
-memory_id
-
-transcript_id
-
-chunk_id
-
-event_date
-
-people
-
-location
-```
-
-Never store business logic only inside Chroma.
-
----
-
-# 12. SQLite Relationships
-
-```text
-Transcript
-
-↓
-
-Transcript Segment
-
-↓
-
-Memory
-
-↓
-
-Conversation
-
-↓
-
-Autobiography
-```
-
----
-
-# 13. Source of Truth
-
-SQLite
-
-Stores
-
-✓ Transcript
-
-✓ Memory
-
-✓ Timeline
-
-✓ Conversation
-
-✓ Autobiography
-
-ChromaDB
-
-Stores
-
-✓ Embedding
-
-✓ Retrieval Metadata
-
-Nothing else.
-
----
-
-# 14. Data Lifecycle
-
-TXT Upload
-
-↓
-
-Transcript
-
-↓
-
-Chunk
-
-↓
-
-Memory Extraction
-
-↓
-
-SQLite
-
-↓
-
-Embedding
-
-↓
-
-ChromaDB
-
-↓
-
-Retrieval
-
-↓
-
-QA
-
-↓
-
-Timeline
-
-↓
-
-Autobiography
-
----
-
-# 15. Deletion Policy
-
-Deleting a transcript
-
-↓
-
-Delete Memory
-
-↓
-
-Delete Embedding
-
-↓
-
-Rebuild BM25
-
-↓
-
-Invalidate Timeline
-
-↓
-
-Invalidate Autobiography
-
-Raw transcript files are never modified automatically.
-
----
-
-# 16. Design Principles
-
-SQLite
-
-↓
-
-Permanent Storage
-
-Chroma
-
-↓
-
-Search Index
-
-Memory
-
-↓
-
-Single Source
-
-Citation
-
-↓
-
-Mandatory
-
-Everything generated by AI must be traceable back to original transcript.
+raw 파일은 이 흐름에서 수정하거나 삭제하지 않는다.

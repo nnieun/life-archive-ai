@@ -1,5 +1,20 @@
 # Life Archive AI Development Tasks
 
+## 현재 진행 상태
+
+| TASK | 상태 | 주요 결과 |
+|---|---|---|
+| TASK-001~003 | 완료 | 프로젝트·환경·FastAPI/Streamlit 골격 |
+| TASK-004~007 | 완료 | 데이터 검사·로더·SQLite·청킹 |
+| TASK-008~010 | 완료 | 기억 추출·Chroma·Hybrid Retrieval |
+| TASK-011~013 | 완료 | Grounded QA·타임라인·자서전 |
+| TASK-014~018 | 완료 | Streamlit·평가·테스트·삭제·안전한 오류 처리 |
+| TASK-019 | 완료 | 실제 구현 기준 최종 포트폴리오 문서와 화면 이미지 |
+| TASK-020 | 대기 | 릴리스 재현성 검증과 `v0.1.0` 준비 |
+
+마지막 갱신 시점의 전체 회귀 테스트는 130개가 통과했다. TASK-020은 아직
+시작하지 않았으며 버전은 계속 `0.0.0`이다.
+
 ## Development Strategy
 
 프로젝트를 한 번에 구현하지 않는다.
