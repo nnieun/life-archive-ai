@@ -651,6 +651,10 @@ GET
 
 /api/v1/memories
 
+DELETE
+
+/api/v1/transcripts/{transcript_id}
+
 POST
 
 /api/v1/chat
@@ -680,6 +684,12 @@ services. Existing raw filenames and duplicate transcript content are rejected.
 
 Streamlit never invokes backend business services. Its five pages communicate
 only through the typed HTTP client and FastAPI endpoints.
+
+`DELETE /api/v1/transcripts/{transcript_id}` logically deletes the SQLite
+transcript, segments, and memories in one transaction. It invalidates cited
+conversation messages and autobiographies, removes Chroma vectors, and rebuilds
+BM25. Timeline filtering updates automatically because it reads active SQLite
+memories. Raw transcript files are never deleted by the API.
 
 `POST /api/v1/timeline` accepts optional inclusive ISO `start_date` and
 `end_date` values. The response separates chronologically sorted `events` from
