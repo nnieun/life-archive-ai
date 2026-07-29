@@ -201,6 +201,17 @@ Evaluation metrics
 - Citation Accuracy
 - Response Time
 
+Run the deterministic evaluation on the bundled synthetic dataset:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_evaluation.py
+```
+
+The command compares 256/512/1024-character and event-aware chunks with
+dense, MMR, BM25, and hybrid retrieval at Top-K 3/5/10. It writes detailed
+query-level results and a comparison summary under `reports/`. The default
+evaluation never reads `data/raw`, calls OpenAI, or uses personal information.
+
 ---
 
 # Dataset Inspection
