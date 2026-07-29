@@ -35,25 +35,8 @@ TXT 형식의 STT 대화 기록을 업로드하면 다음 과정을 거칩니다
 
 ## 2. 시스템 아키텍처
 
-```mermaid
-flowchart TD
-    U[사용자] --> UI[Streamlit]
-    UI --> API[FastAPI]
+<img width="1600" height="1040" alt="image" src="https://github.com/user-attachments/assets/58bde2d1-3b18-4706-a423-111e0afd7208" />
 
-    API --> ING[기억 수집 서비스]
-    API --> GRAPH[QA · 자서전 LangGraph]
-    API --> TIME[타임라인 서비스]
-
-    ING --> DB[(SQLite)]
-    ING --> VECTOR[(ChromaDB)]
-
-    GRAPH --> RETRIEVER[Hybrid Retriever]
-    RETRIEVER --> DB
-    RETRIEVER --> VECTOR
-    TIME --> DB
-
-    GRAPH --> LLM[OpenAI API]
-```
 
 시스템은 크게 네 부분으로 구성됩니다.
 
