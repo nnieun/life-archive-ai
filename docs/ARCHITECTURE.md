@@ -1,741 +1,199 @@
-# Codex가 프로젝트 전체를 이해하는 설계 문서
+# Life Archive AI 아키텍처
 
-# ARCHITECTURE.md
-
-# Life Archive AI Architecture
-
----
-
-# 1. System Overview
-
-Life Archive AI is a Memory-Centric Retrieval-Augmented Generation (RAG) system.
-
-Unlike a traditional PDF chatbot, this project stores personal memories as structured long-term memories.
-
-The system retrieves only relevant memories and generates grounded responses.
-
-Main Features
-
-- Memory Ingestion
-- Hybrid Retrieval
-- Grounded Question Answering
-- Timeline Generation
-- Autobiography Generation
-
----
-
-# 2. System Architecture
-
-```mermaid
-flowchart TD
-
-User
-
---> Streamlit
-
-Streamlit
-
---> FastAPI
-
-FastAPI
-
---> Memory Service
-
-Memory Service
-
---> SQLite
-
-Memory Service
-
---> ChromaDB
-
-FastAPI
-
---> LangGraph
-
-LangGraph
-
---> Retriever
-
-Retriever
-
---> SQLite
-
-Retriever
-
---> ChromaDB
-
-LangGraph
-
---> OpenAI
-
-LangGraph
-
---> FastAPI
-
-FastAPI
-
---> Streamlit
-```
-
----
-
-# 3. Data Flow
-
-## Memory Ingestion
-
-```text
-TXT Upload
-
-↓
-
-Read Transcript
-
-↓
-
-Normalize Text
-
-↓
-
-Chunking
-
-↓
-
-Structured Memory Extraction
-
-↓
-
-SQLite
-
-↓
-
-Embedding
-
-↓
-
-ChromaDB
-```
-
----
-
-## Question Answering
-
-```text
-User Question
-
-↓
-
-Hybrid Retrieval
-
-↓
-
-Relevant Memories
-
-↓
-
-Grounded Answer
-
-↓
-
-Citation Verification
-
-↓
-
-Final Answer
-```
-
----
-
-The Q&A workflow is a bounded `StateGraph`:
-
-```text
-retrieve
-  -> evidence_sufficient
-     -> insufficient_answer -> END
-     -> generate_answer
-        -> verify_answer
-           -> finalize -> END
-           -> rewrite_once
-              -> verify_answer
-                 -> finalize_or_reject -> END
-```
-
-Model outputs are strict Pydantic Structured Outputs. The generated answer is a
-list of claims, and every claim must carry one or more selected `memory_id`
-values. Application code resolves those IDs to SQLite `memory_sources`, renders
-transcript IDs and half-open source offsets, and rejects IDs outside the
-selected evidence before model verification.
-
-Retrieved memories are wrapped as escaped JSON and explicitly treated as
-untrusted data. Instructions inside transcripts cannot alter the workflow. The
-graph performs at most one rewrite and never returns a draft that fails final
-verification.
-
----
-
-## Timeline Generation
-
-```text
-Stored Memories
-
-↓
-
-Sort by Event Date
-
-↓
-
-Timeline Events
-
-↓
-
-Timeline Output
-```
-
-Timeline generation reads active and corrected memories directly from SQLite.
-It removes records superseded by visible corrections, excludes deleted and
-untraceable memories, interprets partial dates as supported intervals, and
-keeps unknown dates in a separate collection. It is a deterministic Python
-service with no LangGraph or model call.
-
----
-
-## Autobiography Generation
-
-```text
-Retrieve Memories
-
-↓
-
-Build Timeline
-
-↓
-
-Create Chapter Plan
-
-↓
-
-Write Chapters
-
-↓
-
-Verify Citations
-
-↓
-
-Generate Final Draft
-```
-
----
-
-# 4. Folder Structure
-
-```text
-life-archive-ai/
-
-backend/
-
-frontend/
-
-data/
-
-docs/
-
-scripts/
-
-tests/
-```
-
-Detailed Structure
-
-```text
-backend/
-
-app/
-
-api/
-
-graphs/
-
-prompts/
-
-frontend/
-
-app.py
-
-api_client.py
-
-data/
-
-raw/
-
-processed/
-
-db/
-
-indexes/
-
-exports/
-```
-
----
-
-# 5. Backend Architecture
-
-The backend consists of four major components.
-
-## API Layer
-
-Responsibilities
-
-- Receive requests
-- Validate inputs
-- Return responses
-
-Files
-
-```text
-api/
-
-health.py
-
-chat.py
-
-timeline.py
-
-memories.py
-
-autobiographies.py
-```
-
----
-
-## Service Layer
-
-Business Logic
-
-```text
-ingestion.py
-
-retrieval.py
-
-timeline.py
-
-autobiography.py
-```
-
-Responsibilities
-
-- Memory processing
-- Retrieval
-- Timeline creation
-- Autobiography generation
-
----
-
-## Storage Layer
-
-SQLite
-
-Stores
-
-- transcripts
-- memories
-- conversations
-- timeline
-- autobiography
-
-ChromaDB
-
-Stores
-
-- embeddings
-- vector metadata
-
-SQLite is the source of truth.
-
----
-
-## AI Layer
-
-LangChain
-
-↓
-
-LangGraph
-
-↓
-
-OpenAI
-
-Responsible for
-
-- Memory extraction
-- Retrieval
-- Answer generation
-- Chapter generation
-
-Memory extraction is a normal service, not a LangGraph workflow. It uses an
-OpenAI native JSON Schema Structured Output mapped to a strict Pydantic model,
-validates evidence offsets against the stored transcript segment, and writes
-the memory plus source reference atomically to SQLite.
-
----
-
-# 6. Database Architecture
-
-SQLite
-
-```text
-transcripts
-
-↓
-
-transcript_segments
-
-↓
-
-memories
-
-↓
-
-conversation_sessions
-
-↓
-
-conversation_messages
-
-↓
-
-autobiographies
-```
-
-SQLite stores structured information.
-
----
-
-# 7. ChromaDB
-
-Stores
-
-- embedding
-- memory_id
-- minimal metadata: embedding_version and content_hash
-
-Never store business data only in ChromaDB.
-
-If ChromaDB is deleted,
-
-it must be rebuildable from SQLite.
-
-The persistent memory collection uses each SQLite `memory_id` as its Chroma ID.
-Indexing is idempotent: an unchanged content hash and embedding version skips
-another embedding call, while changed memories are upserted. Deleted SQLite
-memories are removed during synchronization.
-
-Similarity search uses Chroma only to rank candidate IDs. Before returning a
-result, the service reloads the current memory from SQLite and rejects deleted
-or stale candidates. The indexed text is limited to the memory title and
-summary and is always rebuildable.
-
----
-
-# 8. Hybrid Retrieval
-
-The retrieval service combines two independent rankings:
-
-```text
-query
-  -> Chroma similarity ranking
-  -> BM25 word + character bigram ranking
-  -> Reciprocal Rank Fusion
-  -> deduplicate memory_id
-  -> reload active memories from SQLite
-  -> Top-K results
-```
-
-RRF combines rank positions rather than incomparable raw dense and sparse
-scores. The in-memory BM25 index is disposable and can be rebuilt from active
-SQLite memories. It verifies content hashes at search time so changed records
-must be synchronized before they can be returned.
-
-The retrieval pipeline combines
-
-Semantic Search
-
-+
-
-BM25
-
-↓
-
-Reciprocal Rank Fusion
-
-↓
-
-Optional MMR
-
-↓
-
-Top-K Memories
-
-Supported Experiments
-
-Similarity
-
-MMR
-
-Top-K
-
-Chunk Size
-
----
-
-# 9. LangGraph
-
-LangGraph is used ONLY for
-
-Grounded QA
-
-and
-
-Autobiography.
-
----
-
-## QA Graph
+## 1. 시스템 구성
 
 ```mermaid
 flowchart LR
-
-START
-
---> Retrieve
-
-Retrieve
-
---> Generate
-
-Generate
-
---> Verify
-
-Verify
-
---> Rewrite
-
-Rewrite
-
---> END
+    User[사용자] --> UI[Streamlit]
+    UI -->|HTTP JSON| API[FastAPI]
+    API --> Services[일반 Python 서비스]
+    API --> QA[QA LangGraph]
+    API --> AB[Autobiography LangGraph]
+    Services --> DB[(SQLite)]
+    Services --> Chroma[(ChromaDB)]
+    Services --> BM25[In-memory BM25]
+    QA --> Retriever[Hybrid Retriever]
+    AB --> Retriever
+    Retriever --> DB
+    Retriever --> Chroma
+    Retriever --> BM25
+    QA --> OpenAI[OpenAI]
+    AB --> OpenAI
 ```
 
----
+SQLite는 transcript, segment, memory, source, conversation과 autobiography의
+유일한 기준 저장소다. Chroma와 BM25는 삭제 후 재구성 가능한 인덱스다.
 
-## Autobiography Graph
+## 2. 계층과 폴더
 
 ```text
-analyze_request
-  -> retrieve_memories
-  -> build_timeline
-  -> create_chapter_plan (1 to 3 chapters)
-  -> write_chapter
-  -> verify_chapter
-     -> pass: save_chapter -> next chapter
-     -> fail: revise_once -> verify_chapter
-        -> second failure: stop with verified draft only
-  -> assemble_autobiography
-  -> mark completed
+backend/app/
+├─ api/       FastAPI 요청 검증과 HTTP 응답
+├─ core/      환경 설정, 공통 오류, 요청 ID, 안전한 JSON 로그
+├─ models/    서비스·그래프 입출력 Pydantic 모델
+├─ prompts/   extraction, QA, autobiography 프롬프트
+├─ services/  ingestion, retrieval, QA, timeline, autobiography, privacy
+└─ storage/   SQLite 연결, 스키마, repository
+
+frontend/
+├─ app.py       Streamlit navigation
+├─ api_client.py
+├─ ui.py
+└─ pages/       upload, memories, chat, timeline, autobiography
 ```
 
-Every generated paragraph names its supporting `memory_id` values. Application
-code rejects citations outside the chapter plan, resolves accepted IDs to
-SQLite source offsets, and saves only verified chapters. Each successful
-chapter update persists the accumulated draft; final assembly changes status
-to `completed` only after every requested chapter passes.
+Streamlit은 백엔드 서비스나 저장소를 직접 import하지 않고 typed HTTP
+client로 FastAPI만 호출한다.
 
----
+## 3. 수집 흐름
 
-# 10. State Design
+```mermaid
+sequenceDiagram
+    participant UI as Streamlit
+    participant API as FastAPI
+    participant I as Ingestion Service
+    participant DB as SQLite
+    participant C as Chroma
 
-QAState
-
-```text
-session_id
-
-question
-
-retrieved_memories
-
-draft_answer
-
-validation_result
-
-final_answer
-
-retry_count
+    UI->>API: base64 TXT + metadata
+    API->>I: validated bytes
+    I->>I: filename/UTF-8/hash validation
+    I->>I: immutable raw file create
+    I->>DB: transcript 저장
+    I->>DB: source-preserving segments 저장
+    I->>DB: structured memories + sources 저장
+    I->>C: active memory index
+    I-->>API: 처리 개수와 IDs
+    API-->>UI: IngestionResult
 ```
 
-AutobiographyState
+파일명 또는 내용 해시가 중복되면 `409`를 반환한다. 세그먼트와 기억의
+offset은 normalized transcript 기준 반열림 범위다.
 
-```text
-request
+## 4. 검색
 
-retrieval_query
-
-target_period
-
-target_topics
-
-retrieved_memory_ids
-
-timeline
-
-chapter_plan
-
-current_chapter_index
-
-chapter_drafts
-
-review_result
-
-citations
-
-final_content
-
-retry_count
-
-error
+```mermaid
+flowchart TD
+    Q[질문] --> Dense[Chroma similarity]
+    Q --> Sparse[BM25 word + character bigram]
+    Dense --> RRF[Reciprocal Rank Fusion]
+    Sparse --> RRF
+    RRF --> Dedup[memory_id 중복 제거]
+    Dedup --> Reload[SQLite 재조회]
+    Reload --> Guard[deleted/stale 거부]
+    Guard --> TopK[Top-K]
 ```
 
----
+Similarity와 MMR 실험도 지원한다. 서로 다른 점수 척도를 직접 더하지 않고
+순위 기반 RRF를 사용한다.
 
-# 11. Prompt Architecture
+## 5. QA LangGraph
 
-Prompt Categories
-
-Memory Extraction
-
-Question Answering
-
-Verification
-
-Autobiography
-
-Prompt files
-
-```text
-prompts/
-
-extraction.py
-
-qa.py
-
-verification.py
-
-autobiography.py
+```mermaid
+flowchart TD
+    START([질문]) --> RETRIEVE[기억 검색]
+    RETRIEVE --> ASSESS{근거 충분?}
+    ASSESS -- 아니요 --> REJECT[안전한 거절]
+    ASSESS -- 예 --> GENERATE[주장 + memory_id 생성]
+    GENERATE --> VERIFY{검증 통과?}
+    VERIFY -- 예 --> SAVE[대화와 인용 저장]
+    VERIFY -- 아니요 --> REWRITE[1회 재작성]
+    REWRITE --> VERIFY2{재검증}
+    VERIFY2 -- 예 --> SAVE
+    VERIFY2 -- 아니요 --> REJECT
 ```
 
----
+모델은 strict Pydantic Structured Output을 반환한다. 애플리케이션은
+선택되지 않은 `memory_id`를 거부하고 SQLite `memory_sources`로 실제
+인용을 만든다. transcript는 escaped JSON 안의 신뢰하지 않는 데이터로
+전달된다.
 
-# 12. API
+## 6. 타임라인
 
-```text
-GET
+타임라인은 LangGraph와 LLM을 사용하지 않는다. 활성·수정 기억을 SQLite에서
+읽어 날짜의 지원 범위를 계산하고, 누락된 월·일을 만들지 않은 채 정렬한다.
+알 수 없거나 해석할 수 없는 날짜는 `undated_events`로 반환한다.
 
-/api/v1/health
+## 7. 자서전 LangGraph
 
-POST
-
-/api/v1/memories/ingest
-
-GET
-
-/api/v1/memories
-
-POST
-
-/api/v1/chat
-
-POST
-
-/api/v1/timeline
-
-POST
-
-/api/v1/autobiographies
-
-GET
-
-/api/v1/autobiographies/{id}
+```mermaid
+flowchart TD
+    START([요청]) --> RETRIEVE[관련 기억 검색]
+    RETRIEVE --> TIMELINE[기억 타임라인]
+    TIMELINE --> PLAN[1~3장 계획]
+    PLAN --> WRITE[현재 장 작성]
+    WRITE --> VERIFY{문단 출처 검증}
+    VERIFY -- 실패 --> REVISE[1회 수정]
+    REVISE --> VERIFY2{재검증}
+    VERIFY2 -- 실패 --> STOP[검증된 draft만 유지]
+    VERIFY -- 통과 --> SAVE[장 즉시 저장]
+    VERIFY2 -- 통과 --> SAVE
+    SAVE --> NEXT{남은 장?}
+    NEXT -- 예 --> WRITE
+    NEXT -- 아니요 --> COMPLETE[completed]
 ```
 
-`POST /api/v1/chat` accepts `session_id`, `question`, and `top_k` (1 to 20).
-The response includes the final answer, retrieved memory IDs, SQLite-backed
-citations, validation result, and bounded retry count.
+검증되지 않은 장은 저장하지 않고, 앞서 통과한 장은 SQLite draft에
+유지한다.
 
-`POST /api/v1/memories/ingest` accepts an immutable UTF-8 TXT upload as
-base64-encoded bytes. FastAPI saves a new raw original, then calls the normal
-loader, chunker, structured extraction, SQLite persistence, and Chroma indexing
-services. Existing raw filenames and duplicate transcript content are rejected.
-`GET /api/v1/memories` returns active SQLite memories with their source offsets.
+## 8. 저장소
 
-Streamlit never invokes backend business services. Its five pages communicate
-only through the typed HTTP client and FastAPI endpoints.
+### SQLite
 
-`POST /api/v1/timeline` accepts optional inclusive ISO `start_date` and
-`end_date` values. The response separates chronologically sorted `events` from
-`undated_events`, and every event contains source citations.
+- 원본·정규화 transcript와 metadata
+- transcript segments
+- structured memories와 memory sources
+- conversation sessions/messages와 citations
+- autobiography draft/completed content
 
-`POST /api/v1/autobiographies` accepts a title, generation request, optional
-period and topics, and a chapter count from one to three. It returns the
-persisted draft or completed autobiography plus retrieval and validation
-status. `GET /api/v1/autobiographies/{id}` reads the stored result.
+foreign key를 항상 활성화하고 repository transaction으로 원자성을
+보장한다.
 
----
+### ChromaDB
 
-# 13. Development Principles
+- ID: SQLite `memory_id`
+- document: memory title + summary
+- metadata: `memory_id`, `embedding_version`, `content_hash`
 
-SQLite
+검색 hit은 항상 SQLite에서 재조회한다. 내용 hash나 embedding version이
+달라지면 다시 인덱싱하고 삭제된 SQLite 기억의 vector는 제거한다.
 
-↓
+### BM25
 
-Single Source of Truth
+활성 기억의 제목·요약을 단어와 문자 bigram으로 토큰화하는 메모리 내
+인덱스다. SQLite에서 rebuild할 수 있다.
 
-Chroma
+## 9. 개인정보 삭제
 
-↓
+```mermaid
+flowchart LR
+    D[DELETE transcript] --> TX[SQLite 논리 삭제 transaction]
+    TX --> MSG[인용 대화 무효화]
+    TX --> BIO[관련 자서전 무효화]
+    TX --> V[Chroma vector 삭제]
+    V --> B[BM25 rebuild]
+```
 
-Retrieval Only
+raw 파일은 불변 정책에 따라 API가 삭제하지 않는다.
 
-LangGraph
+## 10. 오류와 로그
 
-↓
+모든 HTTP 오류는 `code`, 사용자 안전 메시지와 `request_id`를 포함한다.
+동일한 ID를 `X-Request-ID` 응답 헤더로 반환한다. JSON 로그에는 메서드,
+라우트 템플릿, 상태 코드, 시간, 요청 ID와 예외 타입만 기록하고 원문,
+질문, query 값, 로컬 경로, API 키나 stack trace는 기록하지 않는다.
 
-Workflow Only
+## 11. API
 
-Raw Data
+| Method | Path | 역할 |
+|---|---|---|
+| GET | `/api/v1/health` | 상태 확인 |
+| POST | `/api/v1/memories/ingest` | TXT 수집·추출·색인 |
+| GET | `/api/v1/memories` | 활성 기억과 출처 조회 |
+| POST | `/api/v1/chat` | 근거 기반 QA |
+| POST | `/api/v1/timeline` | 날짜순 기억 조회 |
+| POST | `/api/v1/autobiographies` | 자서전 생성 |
+| GET | `/api/v1/autobiographies/{autobiography_id}` | 저장 결과 조회 |
+| DELETE | `/api/v1/transcripts/{transcript_id}` | 애플리케이션 논리 삭제 |
 
-↓
-
-Never Modify
-
----
-
-# 14. Future Extensions
-
-Possible improvements
-
-Photo Memories
-
-Voice Upload
-
-Video Memories
-
-Knowledge Graph
-
-Relationship Graph
-
-Multi-user
-
-Cloud Deployment
-
-Mobile App
+세부 형식은 [API_SPEC.md](API_SPEC.md)를 따른다.

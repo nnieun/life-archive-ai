@@ -38,8 +38,8 @@ if st.button("타임라인 조회", type="primary"):
                 start_date=start_date,
                 end_date=end_date,
             )
-        except ApiClientError:
-            show_backend_error("타임라인 조회")
+        except ApiClientError as exception:
+            show_backend_error("타임라인 조회", exception)
         else:
             st.subheader("날짜가 있는 기억")
             if not result.events:

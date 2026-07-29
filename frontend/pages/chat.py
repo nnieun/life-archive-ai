@@ -33,8 +33,8 @@ if question:
                     session_id=st.session_state.chat_session_id,
                     question=question,
                 )
-            except ApiClientError:
-                show_backend_error("질문 처리")
+            except ApiClientError as exception:
+                show_backend_error("질문 처리", exception)
             else:
                 st.write(result.final_answer)
                 render_citations(result.citations)

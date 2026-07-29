@@ -105,10 +105,13 @@ class TranscriptIngestionService:
                         chunk.segment_id,
                     )
                 )
-            index_results = [
-                self._vector_index.index_memory(memory.memory_id)
-                for memory in memories
-            ]
+            try:
+                index_results = [
+                    self._vector_index.index_memory(memory.memory_id)
+                    for memory in memories
+                ]
+            except Exception as exception:
+                raise IngestionError("Memory index update failed") from exception
         except TranscriptLoadError as exception:
             raise InvalidUploadError("TXT upload could not be processed") from exception
 

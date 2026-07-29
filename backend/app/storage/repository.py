@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from backend.app.models.transcript import LoadedTranscript
+from backend.app.models.privacy import SQLiteTranscriptDeletion
 from backend.app.storage.database import SQLiteDatabase
 from backend.app.storage.models import (
     AutobiographyContent,
@@ -57,6 +58,41 @@ def _datetime_iso(value: datetime | None) -> str | None:
 
 def _json_dump(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+
+
+def _json_references_memory(
+    serialized: str,
+    memory_ids: set[str],
+) -> bool:
+    """Check structured citation fields without searching prose text."""
+
+    if not memory_ids:
+        return False
+    try:
+        root = json.loads(serialized)
+    except json.JSONDecodeError as exception:
+        raise StorageIntegrityError("Stored citation JSON is invalid") from exception
+
+    pending = [root]
+    while pending:
+        value = pending.pop()
+        if isinstance(value, dict):
+            memory_id = value.get("memory_id")
+            if isinstance(memory_id, str) and memory_id in memory_ids:
+                return True
+            referenced_ids = value.get("memory_ids")
+            if (
+                isinstance(referenced_ids, list)
+                and any(
+                    isinstance(item, str) and item in memory_ids
+                    for item in referenced_ids
+                )
+            ):
+                return True
+            pending.extend(value.values())
+        elif isinstance(value, list):
+            pending.extend(value)
+    return False
 
 
 def _translate_integrity(exception: sqlite3.IntegrityError) -> StorageIntegrityError:
@@ -213,6 +249,100 @@ class SQLiteRepository:
                 (timestamp, timestamp, transcript_id),
             )
         return cursor.rowcount == 1
+
+    def soft_delete_transcript_cascade(
+        self,
+        transcript_id: str,
+    ) -> SQLiteTranscriptDeletion:
+        """Logically delete one transcript and invalidate cited derivatives."""
+
+        timestamp = _now_iso()
+        with self._database.transaction() as connection:
+            transcript = connection.execute(
+                "SELECT transcript_id FROM transcripts "
+                "WHERE transcript_id = ? AND deleted_at IS NULL",
+                (transcript_id,),
+            ).fetchone()
+            if transcript is None:
+                raise StorageNotFoundError("Transcript was not found")
+
+            memory_rows = connection.execute(
+                "SELECT memory_id, status FROM memories "
+                "WHERE transcript_id = ? ORDER BY memory_id",
+                (transcript_id,),
+            ).fetchall()
+            memory_ids = [str(row["memory_id"]) for row in memory_rows]
+            memory_id_set = set(memory_ids)
+
+            message_ids = [
+                str(row["message_id"])
+                for row in connection.execute(
+                    "SELECT message_id, citations_json "
+                    "FROM conversation_messages WHERE deleted_at IS NULL"
+                ).fetchall()
+                if _json_references_memory(
+                    row["citations_json"],
+                    memory_id_set,
+                )
+            ]
+            autobiography_ids = [
+                str(row["autobiography_id"])
+                for row in connection.execute(
+                    "SELECT autobiography_id, content_json "
+                    "FROM autobiographies WHERE status != 'deleted'"
+                ).fetchall()
+                if _json_references_memory(
+                    row["content_json"],
+                    memory_id_set,
+                )
+            ]
+
+            segment_cursor = connection.execute(
+                "UPDATE transcript_segments "
+                "SET deleted_at = ?, updated_at = ? "
+                "WHERE transcript_id = ? AND deleted_at IS NULL",
+                (timestamp, timestamp, transcript_id),
+            )
+            memory_cursor = connection.execute(
+                "UPDATE memories SET status = 'deleted', "
+                "deleted_at = ?, updated_at = ? "
+                "WHERE transcript_id = ? AND status != 'deleted'",
+                (timestamp, timestamp, transcript_id),
+            )
+            if message_ids:
+                connection.executemany(
+                    "UPDATE conversation_messages "
+                    "SET deleted_at = ?, updated_at = ? "
+                    "WHERE message_id = ? AND deleted_at IS NULL",
+                    [
+                        (timestamp, timestamp, message_id)
+                        for message_id in message_ids
+                    ],
+                )
+            if autobiography_ids:
+                connection.executemany(
+                    "UPDATE autobiographies SET status = 'deleted', "
+                    "deleted_at = ?, updated_at = ? "
+                    "WHERE autobiography_id = ? AND status != 'deleted'",
+                    [
+                        (timestamp, timestamp, autobiography_id)
+                        for autobiography_id in autobiography_ids
+                    ],
+                )
+            connection.execute(
+                "UPDATE transcripts SET deleted_at = ?, updated_at = ? "
+                "WHERE transcript_id = ? AND deleted_at IS NULL",
+                (timestamp, timestamp, transcript_id),
+            )
+
+        return SQLiteTranscriptDeletion(
+            transcript_id=transcript_id,
+            memory_ids=memory_ids,
+            deleted_segment_count=segment_cursor.rowcount,
+            deleted_memory_count=memory_cursor.rowcount,
+            invalidated_conversation_message_count=len(message_ids),
+            invalidated_autobiography_count=len(autobiography_ids),
+        )
 
     def create_segment(
         self,

@@ -6,9 +6,11 @@ from backend.app.api.autobiographies import router as autobiographies_router
 from backend.app.api.chat import router as chat_router
 from backend.app.api.health import router as health_router
 from backend.app.api.memories import router as memories_router
+from backend.app.api.privacy import router as privacy_router
 from backend.app.api.timeline import router as timeline_router
 from backend.app.core.config import get_settings
 from backend.app.core.errors import register_error_handlers
+from backend.app.core.request_context import RequestContextMiddleware
 
 
 def create_app() -> FastAPI:
@@ -19,9 +21,11 @@ def create_app() -> FastAPI:
         version=settings.app_version,
         description="Memory-centric retrieval and grounded generation API",
     )
+    application.add_middleware(RequestContextMiddleware)
     register_error_handlers(application)
     application.include_router(health_router, prefix=settings.api_prefix)
     application.include_router(memories_router, prefix=settings.api_prefix)
+    application.include_router(privacy_router, prefix=settings.api_prefix)
     application.include_router(chat_router, prefix=settings.api_prefix)
     application.include_router(timeline_router, prefix=settings.api_prefix)
     application.include_router(autobiographies_router, prefix=settings.api_prefix)

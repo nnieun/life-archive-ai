@@ -28,7 +28,7 @@ if st.button("처리 및 인덱싱", type="primary", disabled=uploaded_file is N
                     "중복 업로드할 수 없습니다."
                 )
             else:
-                show_backend_error("TXT 업로드")
+                show_backend_error("TXT 업로드", exception)
         else:
             status.write(f"세그먼트 {result.segment_count}개 처리")
             status.write(f"구조화 기억 {result.memory_count}개 생성")

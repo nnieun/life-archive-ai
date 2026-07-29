@@ -1,296 +1,71 @@
-# Life Archive AI
-
-## 1. Project Overview
-
-Life Archive AI는 사용자의 생애 기록을 장기 기억(Long-term Memory)으로 저장하고,
-관련 기억을 검색하여 질문에 답변하며,
-타임라인과 자서전을 생성하는 Memory-Centric RAG 시스템이다.
-
-본 프로젝트는 외부 STT 시스템으로 변환된 TXT 파일을 입력으로 사용한다.
-
-AI는 단순히 문서를 검색하는 것이 아니라,
-사용자의 기억을 구조화하고,
-관련 기억만을 근거로 응답을 생성한다.
-
----
-
-# 2. Project Goal
-
-본 프로젝트의 목표는 다음과 같다.
-
-- STT 기록을 장기 기억으로 저장
-- Hybrid Search를 이용한 기억 검색
-- 근거 기반 Q&A
-- Timeline 생성
-- 자서전 초안 생성
-- 모든 응답에 출처(Citation) 제공
-
----
-
-# 3. Motivation
-
-일반적인 RAG 시스템은 PDF나 문서를 검색한다.
-
-하지만 사람의 기억은
-
-- 시간
-- 장소
-- 사람
-- 감정
-- 사건
-
-등이 함께 저장된다.
-
-Life Archive AI는 이러한 기억을 구조화하여
-장기 기억 저장소를 구축하는 것을 목표로 한다.
-
----
-
-# 4. Scope
-
-## Included
-
-- STT TXT Upload
-- Memory Extraction
-- Chunking
-- Embedding
-- ChromaDB
-- BM25
-- Hybrid Search
-- Grounded QA
-- Timeline
-- Autobiography
-
-## Excluded
-
-- Speech Recognition
-- Whisper
-- OCR
-- Image Analysis
-- Video Analysis
-- Email Import
-- Calendar Import
-- Multi-user
-- Authentication
-
----
-
-# 5. Technology Stack
-
-Language
-
-- Python 3.13
-
-Backend
-
-- FastAPI
-
-Frontend
-
-- Streamlit
-
-AI
-
-- OpenAI API
-- LangChain
-- LangGraph
-
-Retrieval
-
-- ChromaDB
-- BM25
-
-Database
-
-- SQLite
-
-Validation
-
-- Pydantic v2
-
-Testing
-
-- pytest
-
----
-
-# 6. System Flow
-
-User
-
-↓
-
-Upload TXT
-
-↓
-
-Memory Extraction
-
-↓
-
-Chunking
-
-↓
-
-Embedding
-
-↓
-
-SQLite
-
-+
-
-ChromaDB
-
-↓
-
-Hybrid Retrieval
-
-↓
-
-LangGraph
-
-↓
-
-Grounded Answer
-
-↓
-
-Timeline
-
-↓
-
-Autobiography
-
----
-
-# 7. Core Features
-
-## Memory Ingestion
-
-TXT 업로드
-
-↓
-
-구조화 기억 추출
-
-↓
-
-저장
-
----
-
-## Retrieval
-
-Hybrid Search
-
-- Chroma Similarity
-- BM25
-
----
-
-## QA
-
-관련 기억 검색
-
-↓
-
-답변 생성
-
-↓
-
-근거 검증
-
-↓
-
-출처 제공
-
----
-
-## Timeline
-
-사건을 시간순으로 정렬하여 출력
-
----
-
-## Autobiography
-
-관련 기억 검색
-
-↓
-
-목차 생성
-
-↓
-
-챕터 생성
-
-↓
-
-근거 검증
-
-↓
-
-자서전 초안 생성
-
----
-
-# 8. Expected Outcomes
-
-- Memory-Centric RAG 구현
-- Grounded QA
-- Timeline 생성
-- 자서전 생성
-- LangGraph 활용
-- Hybrid Search 비교
-- RAG 포트폴리오 완성
-
----
-
-# 9. Development Schedule
-
-Week 1
-
-TASK-001
-Project Setup
-
-TASK-002
-Memory Ingestion
-
-TASK-003
-Chunking
-
-TASK-004
-Embedding
-
-TASK-005
-Hybrid Retrieval
-
-TASK-006
-Grounded QA
-
-TASK-007
-Timeline
-
-TASK-008
-Autobiography
-
-TASK-009
-Streamlit UI
-
-TASK-010
-Testing & Evaluation
-
----
-
-# 10. Success Criteria
-
-프로젝트가 성공했다고 판단하는 기준
-
-- TXT 업로드 가능
-- Memory 저장 가능
-- Hybrid Search 가능
-- 출처 기반 답변 생성
-- Timeline 생성
-- 자서전 생성
-- GitHub 공개 가능
+# Life Archive AI 프로젝트 계획
+
+## 1. 목표
+
+외부 STT로 만든 TXT 기록을 사건 단위의 장기 기억으로 구조화하고, 관련
+기억만 검색해 출처가 있는 답변·타임라인·자서전을 만드는 1주 MVP다.
+문서 요약기가 아니라 지속적으로 검색할 수 있는 기억 저장소를 지향한다.
+
+## 2. 해결하려는 문제
+
+- 대화 기록에는 여러 사건이 섞여 있어 다시 찾기 어렵다.
+- 날짜·인물·장소가 불확실하여 임의 보완은 왜곡을 만든다.
+- 일반 RAG 답변은 어느 기억을 근거로 했는지 추적하기 어렵다.
+- 개인 기록은 원본 보존, 로컬 저장, 안전한 삭제와 로그 정책이 필요하다.
+
+## 3. MVP 범위
+
+포함:
+
+- UTF-8 STT TXT 업로드와 중복 방지
+- 정규화, 출처 보존 청킹, 구조화 기억 추출
+- SQLite 저장, Chroma·BM25 인덱싱, Hybrid RRF 검색
+- 근거 기반 QA, 타임라인, 최대 3장 자서전
+- Streamlit UI, 개인정보 보호 삭제, 공통 오류 처리
+- 합성 데이터 평가와 자동화 테스트
+
+제외:
+
+- STT·Whisper, OCR, 이미지·영상 처리
+- 이메일·캘린더 가져오기
+- 인증, 다중 사용자, 클라우드 배포
+- raw 원본의 자동 물리 삭제
+
+## 4. 설계 결정
+
+| 결정 | 이유 |
+|---|---|
+| SQLite를 유일한 Source of Truth로 사용 | 비즈니스 데이터와 인용 근거를 한곳에서 일관되게 관리 |
+| Chroma와 BM25를 폐기 가능한 인덱스로 사용 | 손상되거나 삭제돼도 SQLite에서 재생성 가능 |
+| LangGraph를 QA·자서전에만 사용 | 검증·재작성 상태가 필요한 생성 흐름에만 복잡성 사용 |
+| 타임라인을 일반 Python 서비스로 구현 | 정렬은 결정적 로직이며 LLM이 필요하지 않음 |
+| Structured Output과 Pydantic 사용 | JSON 정규식 파싱과 조용한 모델 오류 방지 |
+| raw TXT를 불변으로 보존 | 재현성과 원본 추적성 유지 |
+
+## 5. 구현 단계
+
+| 단계 | TASK | 결과 |
+|---:|---|---|
+| 1 | 001–003 | 저장소, Python 3.13 환경, FastAPI·Streamlit 골격 |
+| 2 | 004–007 | 데이터 검사, 로더·정규화, SQLite, 청킹 |
+| 3 | 008–010 | 기억 추출, Chroma, BM25·Hybrid Retrieval |
+| 4 | 011–013 | Grounded QA, 타임라인, 자서전 |
+| 5 | 014–018 | UI, 평가, 회귀 테스트, 삭제, 안전한 오류 처리 |
+| 6 | 019 | 최종 포트폴리오 문서 |
+| 7 | 020 | 릴리스 재현성 검증과 v0.1.0 준비 |
+
+## 6. 성공 기준
+
+- TXT 원본을 덮어쓰지 않고 구조화 기억과 출처를 저장한다.
+- 삭제되거나 오래된 Chroma 레코드는 검색 결과로 반환하지 않는다.
+- 질문 답변과 자서전의 모든 주장은 선택된 SQLite 기억으로 검증한다.
+- 날짜의 정밀도와 불확실성을 유지하고 날짜 미상 사건을 분리한다.
+- 실제 OpenAI 호출 없이 전체 자동화 테스트를 실행할 수 있다.
+- README 명령만으로 Windows PowerShell 새 환경에서 설치·실행할 수 있다.
+- `.env`, 개인 TXT, SQLite, Chroma 인덱스를 Git에 포함하지 않는다.
+
+## 7. 현재 상태
+
+TASK-001부터 TASK-019까지 구현 및 문서화가 완료되었다. 마지막
+TASK-020에서는 새 가상환경 설치, 백엔드·프론트엔드 실행, 샘플 평가,
+버전 `0.1.0`과 릴리스 노트를 최종 검증한다.

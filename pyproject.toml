@@ -37,4 +37,7 @@ packages = []
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra"
+addopts = "-ra --strict-markers --basetemp=.pytest-tmp"
+markers = [
+    "integration: cross-service tests using temporary SQLite and Chroma storage",
+]
