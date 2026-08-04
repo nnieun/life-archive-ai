@@ -47,9 +47,8 @@ def render_citations(citations: list[Citation]) -> None:
         st.caption("표시할 출처가 없습니다.")
         return
     st.markdown("**출처**")
-    for citation in citations:
-        segment = citation.segment_id or "전체 원문"
-        st.code(
-            f"{citation.memory_id} · {citation.transcript_id} · "
-            f"{segment} · {citation.start_offset}-{citation.end_offset}"
+    for index, citation in enumerate(citations, start=1):
+        st.markdown(
+            f"- **출처 {index}**: 업로드한 원문의 "
+            f"{citation.start_offset + 1}~{citation.end_offset}번째 글자"
         )

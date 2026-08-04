@@ -109,6 +109,37 @@ def test_duplicate_txt_upload_shows_conflict_message(
     assert "백엔드가 실행 중인지" not in app.error[0].value
 
 
+def test_memories_display_korean_citation_without_internal_ids(
+    api_client: Mock,
+) -> None:
+    api_client.list_memories.return_value = [
+        MemoryView.model_validate(
+            {
+                "memory": {
+                    "memory_id": "mem_001",
+                    "transcript_id": "tr_001",
+                    "title": "첫 만남",
+                    "summary": "친구와 공원에서 만났다.",
+                    "people": ["친구"],
+                    "date_precision": "unknown",
+                    "confidence": 0.9,
+                    "status": "active",
+                },
+                "citations": [_citation()],
+            }
+        )
+    ]
+
+    app = AppTest.from_file("frontend/pages/memories.py").run()
+
+    rendered_citations = " ".join(markdown.value for markdown in app.markdown)
+    assert "출처 1" in rendered_citations
+    assert "업로드한 원문의 1~12번째 글자" in rendered_citations
+    assert "mem_001" not in rendered_citations
+    assert "tr_001" not in rendered_citations
+    assert "seg_001" not in rendered_citations
+
+
 def test_chat_displays_answer_and_citation(api_client: Mock) -> None:
     api_client.chat.return_value = ChatResult.model_validate(
         {
@@ -130,7 +161,10 @@ def test_chat_displays_answer_and_citation(api_client: Mock) -> None:
     app.chat_input[0].set_value("어디에서 만났어?").run()
 
     assert "공원에서 만났습니다." in str(app)
-    assert "mem_001" in str(app)
+    assert any(
+        "업로드한 원문의 1~12번째 글자" in markdown.value
+        for markdown in app.markdown
+    )
 
 
 def test_timeline_displays_precision_and_citation(api_client: Mock) -> None:
@@ -155,7 +189,10 @@ def test_timeline_displays_precision_and_citation(api_client: Mock) -> None:
         "날짜 정밀도: year" in caption.value
         for caption in app.caption
     )
-    assert any("mem_001" in code.value for code in app.code)
+    assert any(
+        "업로드한 원문의 1~12번째 글자" in markdown.value
+        for markdown in app.markdown
+    )
 
 
 def test_autobiography_displays_each_chapter_citation(
@@ -190,4 +227,7 @@ def test_autobiography_displays_each_chapter_citation(
     app.button[0].click().run()
 
     assert any("1장. 첫 장" in header.value for header in app.header)
-    assert any("mem_001" in code.value for code in app.code)
+    assert any(
+        "업로드한 원문의 1~12번째 글자" in markdown.value
+        for markdown in app.markdown
+    )
