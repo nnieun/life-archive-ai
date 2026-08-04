@@ -127,6 +127,48 @@ def test_chroma_failure_becomes_safe_ingestion_error(
         )
 
 
+def test_failed_ingestion_can_be_retried_with_same_content(
+    ingestion_storage,
+) -> None:
+    service, repository, vector_index, raw_root = ingestion_storage
+    content = "다시 시도할 내용입니다.".encode()
+    vector_index.index_memory = Mock(  # type: ignore[method-assign]
+        side_effect=[
+            RuntimeError("index missing C:\private\chroma"),
+            MemoryIndexResult(
+                memory_id="mem_retry",
+                content_hash="a" * 64,
+                indexed=True,
+            ),
+        ]
+    )
+
+    with pytest.raises(IngestionError, match="Memory index update failed"):
+        service.ingest(filename="retry.txt", content=content)
+
+    assert not (raw_root / "retry.txt").exists()
+    assert repository.list_transcripts(include_deleted=False) == []
+
+    result = service.ingest(filename="retry.txt", content=content)
+
+    assert result.memory_count == 1
+    assert result.transcript_id is not None
+    assert (raw_root / "retry.txt").read_bytes() == content
+    assert repository.get_transcript(result.transcript_id) is not None
+
+
+def test_same_content_is_blocked_as_duplicate_after_success(
+    ingestion_storage,
+) -> None:
+    service, _repository, _vector_index, _raw_root = ingestion_storage
+    content = "중복으로 막혀야 하는 내용입니다.".encode()
+
+    service.ingest(filename="duplicate.txt", content=content)
+
+    with pytest.raises(UploadConflictError, match="already exists"):
+        service.ingest(filename="duplicate-again.txt", content=content)
+
+
 def test_ingest_and_memory_list_api_return_citations(
     ingestion_storage,
 ) -> None:
