@@ -60,13 +60,14 @@ class TranscriptIngestionService:
         """Persist a new raw file, extract memories, and refresh Chroma."""
 
         safe_name = self._validate_upload(filename, content)
+        content_hash = sha256(content).hexdigest()
         known_hashes = {
             transcript.content_hash
             for transcript in self._repository.list_transcripts(
-                include_deleted=True
+                include_deleted=False
             )
         }
-        if sha256(content).hexdigest() in known_hashes:
+        if content_hash in known_hashes:
             raise UploadConflictError("This transcript content already exists")
         target = self._transcript_root / safe_name
         try:
@@ -79,6 +80,7 @@ class TranscriptIngestionService:
         except OSError as exception:
             raise IngestionError("Transcript upload could not be saved") from exception
 
+        transcript_id: str | None = None
         try:
             loaded = TranscriptLoader(
                 self._transcript_root,
@@ -92,6 +94,7 @@ class TranscriptIngestionService:
                 )
             )
             self._repository.create_transcript(loaded)
+            transcript_id = loaded.transcript_id
             chunks = chunk_and_store_transcript(
                 self._repository,
                 loaded.transcript_id,
@@ -113,7 +116,13 @@ class TranscriptIngestionService:
             except Exception as exception:
                 raise IngestionError("Memory index update failed") from exception
         except TranscriptLoadError as exception:
+            self._cleanup_failed_upload(target, transcript_id)
             raise InvalidUploadError("TXT upload could not be processed") from exception
+        except Exception as exception:
+            self._cleanup_failed_upload(target, transcript_id)
+            if isinstance(exception, IngestionError):
+                raise
+            raise IngestionError("Transcript upload could not be completed") from exception
 
         return IngestionResult(
             transcript_id=loaded.transcript_id,
@@ -126,6 +135,14 @@ class TranscriptIngestionService:
             ),
             memory_ids=[memory.memory_id for memory in memories],
         )
+
+    def _cleanup_failed_upload(self, target: Path, transcript_id: str | None) -> None:
+        if transcript_id is not None:
+            self._repository.delete_transcript(transcript_id)
+        try:
+            target.unlink(missing_ok=True)
+        except OSError:
+            pass
 
     @staticmethod
     def _validate_upload(filename: str, content: bytes) -> str:

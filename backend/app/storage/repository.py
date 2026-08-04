@@ -173,6 +173,14 @@ class SQLiteRepository:
             raise StorageError("Transcript was not persisted")
         return record
 
+    def delete_transcript(self, transcript_id: str) -> bool:
+        with self._database.transaction() as connection:
+            cursor = connection.execute(
+                "DELETE FROM transcripts WHERE transcript_id = ?",
+                (transcript_id,),
+            )
+        return cursor.rowcount == 1
+
     def get_transcript(
         self,
         transcript_id: str,
