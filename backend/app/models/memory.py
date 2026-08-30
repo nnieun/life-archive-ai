@@ -26,6 +26,37 @@ class DatePrecision(StrEnum):
     UNKNOWN = "unknown"
 
 
+def event_date_matches_precision(
+    event_date: str | None,
+    date_precision: DatePrecision,
+) -> bool:
+    """Check one event_date against the precision that is claimed for it."""
+
+    if date_precision is DatePrecision.UNKNOWN:
+        return event_date is None
+    if event_date is None:
+        return False
+    if date_precision is DatePrecision.YEAR:
+        return _YEAR_PATTERN.fullmatch(event_date) is not None
+    if date_precision is DatePrecision.MONTH:
+        return _MONTH_PATTERN.fullmatch(event_date) is not None
+    if date_precision is DatePrecision.DAY:
+        if _DAY_PATTERN.fullmatch(event_date) is None:
+            return False
+        try:
+            datetime.strptime(event_date, "%Y-%m-%d")
+        except ValueError:
+            return False
+        return True
+    if date_precision is DatePrecision.EXACT:
+        try:
+            parsed = datetime.fromisoformat(event_date)
+        except ValueError:
+            return False
+        return parsed.tzinfo is not None and parsed.utcoffset() is not None
+    return bool(event_date.strip())
+
+
 class ExtractedMemory(BaseModel):
     """One model-proposed memory before transcript context is attached."""
 
@@ -83,28 +114,7 @@ class ExtractedMemory(BaseModel):
             return self
         if self.event_date is None:
             raise ValueError("known date precision requires event_date")
-
-        if self.date_precision is DatePrecision.YEAR:
-            valid = _YEAR_PATTERN.fullmatch(self.event_date) is not None
-        elif self.date_precision is DatePrecision.MONTH:
-            valid = _MONTH_PATTERN.fullmatch(self.event_date) is not None
-        elif self.date_precision is DatePrecision.DAY:
-            valid = _DAY_PATTERN.fullmatch(self.event_date) is not None
-            if valid:
-                try:
-                    datetime.strptime(self.event_date, "%Y-%m-%d")
-                except ValueError:
-                    valid = False
-        elif self.date_precision is DatePrecision.EXACT:
-            try:
-                parsed = datetime.fromisoformat(self.event_date)
-                valid = parsed.tzinfo is not None and parsed.utcoffset() is not None
-            except ValueError:
-                valid = False
-        else:
-            valid = bool(self.event_date.strip())
-
-        if not valid:
+        if not event_date_matches_precision(self.event_date, self.date_precision):
             raise ValueError("event_date does not match date_precision")
         return self
 
@@ -115,3 +125,47 @@ class MemoryExtractionBatch(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     memories: list[ExtractedMemory]
+
+
+class MemoryCorrection(BaseModel):
+    """Human-supplied changes that replace one stored memory.
+
+    Only the fields present in ``model_fields_set`` are applied, so an explicit
+    ``null`` clears a value while an omitted field inherits the original.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    title: str | None = Field(default=None, min_length=1)
+    summary: str | None = Field(default=None, min_length=1, repr=False)
+    people: list[str] | None = None
+    location: str | None = None
+    event_date: str | None = None
+    date_precision: DatePrecision | None = None
+    emotion: str | None = None
+    uncertainty_notes: str | None = None
+
+    @field_validator("people")
+    @classmethod
+    def validate_people(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        if any(not person.strip() for person in value):
+            raise ValueError("people must not contain blank names")
+        if len(set(value)) != len(value):
+            raise ValueError("people must not contain duplicate names")
+        return value
+
+    @model_validator(mode="after")
+    def validate_correction(self) -> MemoryCorrection:
+        changed = self.model_fields_set
+        if not changed:
+            raise ValueError("a correction must change at least one field")
+        if ("event_date" in changed) != ("date_precision" in changed):
+            raise ValueError("event_date and date_precision must be corrected together")
+        if "date_precision" in changed and not event_date_matches_precision(
+            self.event_date,
+            self.date_precision or DatePrecision.UNKNOWN,
+        ):
+            raise ValueError("event_date does not match date_precision")
+        return self
