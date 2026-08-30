@@ -53,16 +53,28 @@ route template, status code, duration과 exception type이다. 알려진 OpenAI
 
 `DELETE /api/v1/transcripts/{transcript_id}`는 다음 순서로 처리한다.
 
-1. transcript와 segment를 하나의 SQLite transaction에서 논리 삭제한다.
-2. 관련 memory를 `deleted` 상태로 변경한다.
-3. 해당 memory를 인용한 conversation message를 숨긴다.
-4. 해당 인용을 가진 autobiography를 `deleted`로 변경한다.
-5. 관련 Chroma vector를 삭제한다.
-6. 활성 SQLite memory로 BM25를 다시 만든다.
+1. 해당 transcript의 모든 memory(삭제·정정된 것 포함) id를 모은다.
+2. 그 id의 Chroma vector를 먼저 삭제한다.
+3. transcript와 segment를 하나의 SQLite transaction에서 논리 삭제한다.
+4. 관련 memory를 `deleted` 상태로 변경한다.
+5. 해당 memory를 인용한 conversation message를 숨긴다.
+6. 해당 인용을 가진 autobiography를 `deleted`로 변경한다.
+7. 활성 SQLite memory로 BM25를 다시 만든다.
+
+Chroma를 SQLite보다 **먼저** 지우는 이유는 실패 방향을 안전한 쪽으로
+고정하기 위해서다. SQLite를 먼저 commit하면 vector 삭제가 실패했을 때
+제목과 요약이 Chroma에 남는데, transcript는 이미 삭제된 상태라 같은
+요청을 다시 보내도 `404`가 되어 되돌릴 방법이 없다. 순서를 뒤집으면
+vector 삭제 실패는 SQLite를 건드리지 않고, commit 실패는 다음
+`sync_from_sqlite`가 복구하는 dense recall 손실에 그친다.
+
+이 삭제는 멱등이다. 이미 삭제된 transcript에 다시 요청하면 `404`가 아니라
+인덱스 정리만 다시 수행하고 SQLite 삭제 건수 `0`을 반환한다. 그래서 정리
+실패(`503`)를 본 호출자는 성공할 때까지 같은 요청을 재시도하면 된다.
+존재한 적 없는 id만 `404`다.
 
 타임라인은 요청 시 활성 기억에서 계산되므로 삭제된 기억은 다음 조회부터
-표시되지 않는다. 인덱스 정리가 실패해도 이미 commit된 SQLite가 기준
-상태이며 API는 `503`으로 후속 정리 실패를 알린다.
+표시되지 않는다.
 
 ## 7. Raw 원본과 보존 한계
 
