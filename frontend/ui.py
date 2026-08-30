@@ -37,7 +37,9 @@ def show_backend_error(action: str, exception: ApiClientError) -> None:
         )
     else:
         message = f"{action} 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
-    st.error(message)
+    st.error(exception.user_message or message)
+    if exception.error_code:
+        st.caption(f"오류 코드: {exception.error_code}")
     if exception.request_id:
         st.caption(f"문제가 계속되면 요청 ID를 알려 주세요: {exception.request_id}")
 

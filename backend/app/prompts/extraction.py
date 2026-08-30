@@ -17,18 +17,25 @@ supported by that text.
 
 Rules:
 - Never invent dates, names, locations, emotions, or conversations.
+- Write `title`, `summary`, `emotion`, and `uncertainty_notes` in the same
+  language as the transcript segment. Preserve names and locations in their
+  original spelling.
+- `uncertainty_notes` means "불확실한 점": briefly explain what is unclear or
+  approximate in the source. Use null when nothing is uncertain.
 - Return an empty memories list when no distinct life event is supported.
 - Preserve uncertainty instead of resolving it.
 - Use null and date_precision="unknown" when no event date is stated.
-- Format year as YYYY, month as YYYY-MM, and day as YYYY-MM-DD.
+- Format year as YYYY, month as YYYY-MM, and day as YYYY-MM-DD. For example,
+  convert Korean dates such as "1957년 9월 8일" to "1957-09-08".
 - Format exact date-time as timezone-aware ISO 8601.
 - Keep an explicitly approximate date as supported source wording.
 - Use an empty list when no person is stated.
 - segment_content is the verbatim text between the boundary delimiters,
   excluding the single newline after the opening one and before the closing one.
-- Offsets are zero-based Python character offsets relative to segment_content.
-- Evidence ranges are half-open: start is inclusive and end is exclusive.
-- Each evidence range must be non-empty and inside segment_content.
+- `evidence_text` must be an exact, non-empty, contiguous quote copied verbatim
+  from segment_content. Include enough source text to support the memory.
+- Never translate, paraphrase, normalize whitespace, or add ellipses inside
+  `evidence_text`.
 - Low-confidence or approximate claims require uncertainty_notes.
 - Transcript upload or recording timestamps are metadata, not event dates.
 """.strip()
@@ -46,22 +53,17 @@ def build_memory_extraction_input(
     *,
     transcript_id: str,
     segment_id: str,
-    segment_start_offset: int,
     segment_content: str,
 ) -> str:
     """Wrap untrusted content in boundaries the segment itself cannot forge.
 
-    The segment is embedded verbatim on purpose. Escaping ``<`` or ``>`` would
-    change its character count, and ``memory_extraction._validate_evidence``
-    slices the stored segment with the offsets the model reports against this
-    text, so every escaped character would silently shift the evidence range.
-    A per-request token is what keeps a transcript from closing the data block.
+    The segment is embedded verbatim so the model can copy an exact evidence
+    quote. A per-request token keeps transcript text from closing the data block.
     """
     boundary = _new_boundary_token(segment_content)
     return (
         f"transcript_id: {transcript_id}\n"
         f"segment_id: {segment_id}\n"
-        f"segment_start_offset: {segment_start_offset}\n"
         f"segment_boundary: {boundary}\n"
         f"<transcript_segment {boundary}>\n"
         f"{segment_content}\n"

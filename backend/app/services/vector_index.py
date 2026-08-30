@@ -38,10 +38,15 @@ class EmbeddingProvider(Protocol):
 
 def create_openai_embeddings(
     model: str = DEFAULT_EMBEDDING_MODEL,
+    *,
+    api_key: str | None = None,
 ) -> OpenAIEmbeddings:
     """Create the production OpenAI embedding provider."""
 
-    return OpenAIEmbeddings(model=model)
+    model_kwargs: dict[str, object] = {"model": model}
+    if api_key:
+        model_kwargs["api_key"] = api_key
+    return OpenAIEmbeddings(**model_kwargs)
 
 
 class MemoryVectorIndex:
@@ -54,13 +59,17 @@ class MemoryVectorIndex:
         *,
         embeddings: EmbeddingProvider | None = None,
         embedding_model: str = DEFAULT_EMBEDDING_MODEL,
+        api_key: str | None = None,
         embedding_version: str | None = None,
         collection_name: str = DEFAULT_COLLECTION_NAME,
     ) -> None:
         self._repository = repository
         self._persist_directory = Path(persist_directory)
         self._persist_directory.mkdir(parents=True, exist_ok=True)
-        self._embeddings = embeddings or create_openai_embeddings(embedding_model)
+        self._embeddings = embeddings or create_openai_embeddings(
+            embedding_model,
+            api_key=api_key,
+        )
         self._embedding_version = (
             embedding_version or f"{embedding_model}:v1"
         )
@@ -192,7 +201,7 @@ class MemoryVectorIndex:
             raise ValueError("Embedding provider returned an empty query vector")
         result = self._collection.query(
             query_embeddings=[query_vector],
-            n_results=vector_count,
+            n_results=min(top_k, vector_count),
             include=["metadatas", "distances"],
         )
 

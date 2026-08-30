@@ -146,10 +146,14 @@ class ApiClientError(RuntimeError):
         *,
         status_code: int | None = None,
         request_id: str | None = None,
+        error_code: str | None = None,
+        user_message: str | None = None,
     ) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.request_id = request_id
+        self.error_code = error_code
+        self.user_message = user_message
 
 
 def _api_error(
@@ -159,16 +163,25 @@ def _api_error(
     """Read only the safe request ID from a backend error response."""
 
     request_id = response.headers.get("X-Request-ID")
+    error_code: str | None = None
+    response_message: str | None = None
     try:
         error = response.json().get("error", {})
-        if isinstance(error, dict) and isinstance(error.get("request_id"), str):
-            request_id = error["request_id"]
+        if isinstance(error, dict):
+            if isinstance(error.get("request_id"), str):
+                request_id = error["request_id"]
+            if isinstance(error.get("code"), str):
+                error_code = error["code"]
+            if isinstance(error.get("message"), str):
+                response_message = error["message"]
     except (ValueError, AttributeError):
         pass
     return ApiClientError(
         message,
         status_code=response.status_code,
         request_id=request_id,
+        error_code=error_code,
+        user_message=response_message,
     )
 
 

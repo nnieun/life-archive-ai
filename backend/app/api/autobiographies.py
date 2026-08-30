@@ -77,6 +77,7 @@ def get_autobiography_service() -> AutobiographyService:
         repository,
         settings.chroma_persist_directory,
         embedding_model=settings.openai_embedding_model,
+        api_key=settings.openai_api_key,
     )
     vector_index.sync_from_sqlite()
     bm25_index = BM25MemoryIndex(repository)
@@ -90,7 +91,10 @@ def get_autobiography_service() -> AutobiographyService:
         repository,
         retriever,
         TimelineService(repository),
-        build_openai_autobiography_models(settings.openai_model),
+        build_openai_autobiography_models(
+            settings.openai_model,
+            api_key=settings.openai_api_key,
+        ),
     )
 
 

@@ -45,6 +45,7 @@ class LoadedTranscript(BaseModel):
 
     transcript_id: str
     filename: str = Field(repr=False)
+    source_path: str | None = None
     recording_id: str | None = None
     language: str | None = None
     source_type: str

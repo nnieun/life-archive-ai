@@ -51,6 +51,8 @@ def test_health_client_returns_safe_error() -> None:
 
     assert captured.value.status_code == 503
     assert captured.value.request_id == "req-health"
+    assert captured.value.error_code == "storage_error"
+    assert captured.value.user_message == "Storage service is unavailable"
 
 
 def test_upload_client_preserves_original_bytes() -> None:

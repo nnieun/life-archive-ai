@@ -146,14 +146,15 @@ class SQLiteRepository:
                 connection.execute(
                     """
                     INSERT INTO transcripts (
-                        transcript_id, filename, recording_id, language,
+                        transcript_id, filename, source_path, recording_id, language,
                         source_type, uploaded_at, recorded_at, content_hash,
                         raw_content, normalized_content, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         transcript.transcript_id,
                         transcript.filename,
+                        transcript.source_path,
                         transcript.recording_id,
                         transcript.language,
                         transcript.source_type,

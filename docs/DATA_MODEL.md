@@ -27,6 +27,10 @@ SQLite는 유일한 Source of Truth다. ChromaDB와 BM25는 활성 SQLite
 raw 파일은 `data/raw/transcripts`에 불변으로 저장되며 SQLite의
 `raw_content`도 normalized content와 분리된다.
 
+`source_path` stores the relative path of the immutable original, for example
+`data/raw/transcripts/recording_001.txt`. Absolute local paths are not exposed
+through the API.
+
 ## 3. Transcript Segment
 
 | 필드 | 타입 | 규칙 |
@@ -69,9 +73,12 @@ segment.content == transcript.normalized_content[
 | `status` | enum | active/corrected/deleted |
 | `supersedes_memory_id` | str \| null | 수정으로 대체한 기억 |
 
-`event_date`가 null이면 `date_precision`은 `unknown`이어야 한다. 모델이
-반환한 segment 내부 evidence offset을 검증한 뒤 절대 transcript offset으로
-변환하여 memory와 source를 한 transaction에 저장한다.
+`event_date`가 null이면 `date_precision`은 `unknown`이어야 한다. 모델은
+segment에서 그대로 복사한 `evidence_text`를 반환한다. 백엔드가 해당 인용문을
+segment에서 찾아 상대 offset을 계산한 뒤 절대 transcript offset으로 변환하여
+memory와 source를 한 transaction에 저장한다. 유효한 날짜 표기의 정밀도는
+백엔드가 형식에서 다시 계산하며, 해석할 수 없는 모델 날짜는 근거 없는 날짜를
+저장하지 않도록 `unknown`으로 낮춘다.
 
 ## 5. Memory Source와 Citation
 

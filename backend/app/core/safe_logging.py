@@ -16,6 +16,8 @@ _ALLOWED_FIELDS: Final = (
     "status_code",
     "duration_ms",
     "error_type",
+    "error_code",
+    "error_param",
 )
 _SECRET_PATTERNS: Final = (
     re.compile(r"\bsk-[A-Za-z0-9_-]{6,}\b"),
@@ -73,10 +75,27 @@ def log_safe_exception(
 ) -> None:
     """Log only the exception type, never its potentially sensitive message."""
 
+    error_code = getattr(exception, "code", None)
+    error_param = getattr(exception, "param", None)
+    body = getattr(exception, "body", None)
+    if isinstance(body, dict):
+        error_code = error_code or body.get("code") or body.get("type")
+        error_param = error_param or body.get("param")
+    validation_errors = getattr(exception, "errors", None)
+    if callable(validation_errors):
+        locations: list[str] = []
+        for item in validation_errors():
+            location = ".".join(str(part) for part in item.get("loc", ()))
+            error_kind = str(item.get("type", "validation_error"))
+            locations.append(f"{location}:{error_kind}")
+        if locations:
+            error_param = ";".join(locations)[:300]
     configure_safe_logging().error(
         event,
         extra={
             "request_id": request_id,
             "error_type": type(exception).__name__,
+            **({"error_code": error_code} if isinstance(error_code, str) else {}),
+            **({"error_param": error_param} if isinstance(error_param, str) else {}),
         },
     )

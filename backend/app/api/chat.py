@@ -47,6 +47,7 @@ def get_qa_service() -> GroundedQAService:
         repository,
         settings.chroma_persist_directory,
         embedding_model=settings.openai_embedding_model,
+        api_key=settings.openai_api_key,
     )
     vector_index.sync_from_sqlite()
     bm25_index = BM25MemoryIndex(repository)
@@ -59,7 +60,10 @@ def get_qa_service() -> GroundedQAService:
     return GroundedQAService(
         repository,
         retriever,
-        build_openai_qa_models(settings.openai_model),
+        build_openai_qa_models(
+            settings.openai_model,
+            api_key=settings.openai_api_key,
+        ),
     )
 
 
