@@ -183,6 +183,71 @@ def test_conflicting_dates_for_same_evidence_are_rejected(
     assert repository.list_memories() == []
 
 
+def test_chunk_overlap_duplicate_evidence_is_not_stored_twice() -> None:
+    """Two adjacent chunks that share an overlap window extract one sentence twice.
+
+    seg_a covers absolute [0, 15); seg_b covers [10, 25) - a 5-character
+    overlap, same shape as chunking.py's chunk_overlap. Both model calls
+    report the identical event using the same absolute evidence span [10, 15),
+    each expressed in that segment's own relative offsets.
+    """
+
+    transcript_text = "가" * 30
+    database = SQLiteDatabase(":memory:")
+    database.initialize()
+    repository = SQLiteRepository(database)
+    repository.create_transcript(
+        LoadedTranscript(
+            transcript_id="tr_overlap",
+            filename="overlap-transcript.txt",
+            language="ko",
+            source_type="stt_text",
+            uploaded_at=datetime(2026, 7, 27, tzinfo=UTC),
+            content_hash="a" * 64,
+            raw_content=transcript_text,
+            normalized_content=transcript_text,
+        )
+    )
+    seg_a = repository.create_segment(
+        TranscriptSegmentCreate(
+            segment_id="seg_overlap_a",
+            transcript_id="tr_overlap",
+            chunk_index=0,
+            content=transcript_text[0:15],
+            start_offset=0,
+            end_offset=15,
+        )
+    )
+    seg_b = repository.create_segment(
+        TranscriptSegmentCreate(
+            segment_id="seg_overlap_b",
+            transcript_id="tr_overlap",
+            chunk_index=1,
+            content=transcript_text[10:25],
+            start_offset=10,
+            end_offset=25,
+        )
+    )
+    candidate_from_a = _candidate(evidence_start_offset=10, evidence_end_offset=15)
+    candidate_from_b = _candidate(evidence_start_offset=0, evidence_end_offset=5)
+
+    first = extract_and_store_segment(
+        repository,
+        FakeStructuredModel(MemoryExtractionBatch(memories=[candidate_from_a])),
+        seg_a.segment_id,
+    )
+    second = extract_and_store_segment(
+        repository,
+        FakeStructuredModel(MemoryExtractionBatch(memories=[candidate_from_b])),
+        seg_b.segment_id,
+    )
+
+    assert len(first) == 1
+    assert second == []
+    assert len(repository.list_memories()) == 1
+    database.close()
+
+
 def test_schema_rejects_missing_uncertainty_and_invalid_date() -> None:
     with pytest.raises(ValidationError, match="uncertainty_notes"):
         _candidate(confidence=0.2)
