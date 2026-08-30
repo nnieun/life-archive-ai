@@ -228,6 +228,14 @@ MVP 비교 결과입니다. `alias`는 실제 임베딩 검색이 아니므로 �
 전체 결과와 한계는
 [평가 요약](reports/experiment_summary.md)에서 확인할 수 있습니다.
 
+실제 의미 검색을 평가하려면 `.env`에 `OPENAI_API_KEY`를 설정한 뒤 별도 명령을 실행합니다.
+이 명령은 OpenAI 임베딩 API를 호출하므로 비용이 발생하며, 결과는
+`reports/real_retrieval_results.csv`와 `reports/real_evaluation_manifest.json`에 저장됩니다.
+
+```powershell
+python scripts\\run_real_evaluation.py
+```
+
 ## 데이터와 개인정보
 
 - 업로드 원본: `data/raw/transcripts/` — 불변이며 Git에서 제외
