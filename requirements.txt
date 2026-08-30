@@ -1,5 +1,6 @@
 # --- LLM / Agent ---
 langchain
+langchain-chroma
 langchain-core
 langchain-openai
 langchain-community
@@ -21,6 +22,8 @@ httpx
 # --- Etc ---
 python-dotenv
 tiktoken
+duckduckgo-search
+pypdf
 
 # --- Test ---
 pytest
