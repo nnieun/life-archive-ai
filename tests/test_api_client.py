@@ -6,8 +6,10 @@ import httpx
 import pytest
 
 from frontend.api_client import (
+    INGEST_TIMEOUT_SECONDS,
     ApiClientError,
     LifeArchiveApiClient,
+    TranscriptDeletionResult,
 )
 
 
@@ -84,3 +86,59 @@ def test_upload_client_preserves_conflict_status() -> None:
         client.ingest_transcript("memory.txt", b"duplicate")
 
     assert captured.value.status_code == 409
+
+
+def test_upload_client_uses_longer_timeout_for_model_processing() -> None:
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["timeout"] = request.extensions["timeout"]
+        return httpx.Response(
+            200,
+            json={
+                "transcript_id": "tr_001",
+                "filename": "memory.txt",
+                "segment_count": 1,
+                "memory_count": 1,
+                "indexed_memory_count": 1,
+                "memory_ids": ["mem_001"],
+            },
+        )
+
+    client = LifeArchiveApiClient(transport=httpx.MockTransport(handler))
+
+    client.ingest_transcript("memory.txt", b"content")
+
+    assert captured["timeout"] == {
+        "connect": INGEST_TIMEOUT_SECONDS,
+        "read": INGEST_TIMEOUT_SECONDS,
+        "write": INGEST_TIMEOUT_SECONDS,
+        "pool": INGEST_TIMEOUT_SECONDS,
+    }
+
+
+def test_delete_client_parses_transcript_deletion_result() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "DELETE"
+        assert request.url.path == "/api/v1/transcripts/tr_001"
+        return httpx.Response(
+            200,
+            json={
+                "transcript_id": "tr_001",
+                "deleted_segment_count": 1,
+                "deleted_memory_count": 2,
+                "deleted_vector_count": 2,
+                "bm25_memory_count": 2,
+                "invalidated_conversation_message_count": 0,
+                "invalidated_autobiography_count": 0,
+                "raw_file_deleted": False,
+            },
+        )
+
+    client = LifeArchiveApiClient(transport=httpx.MockTransport(handler))
+
+    result = client.delete_transcript("tr_001")
+
+    assert isinstance(result, TranscriptDeletionResult)
+    assert result.deleted_memory_count == 2
+    assert result.raw_file_deleted is False

@@ -3,7 +3,8 @@
 import streamlit as st
 
 from frontend.api_client import ApiClientError
-from frontend.ui import get_api_client, render_citations, show_backend_error
+from frontend.citations import render_citations
+from frontend.ui import get_api_client, show_backend_error
 
 st.title("자서전 초안")
 st.caption("기간과 주제를 바탕으로 최대 3장의 근거 있는 초안을 생성합니다.")

@@ -30,7 +30,7 @@ from backend.app.services.memory_extraction import (
 )
 from backend.app.services.vector_index import MemoryVectorIndex
 from backend.app.storage.database import SQLiteDatabase
-from backend.app.storage.models import CitationRecord, MemoryRecord
+from backend.app.storage.models import MemoryRecord
 from backend.app.storage.repository import SQLiteRepository, StorageError
 
 router = APIRouter(tags=["memories"])
@@ -55,12 +55,62 @@ class IngestTranscriptRequest(BaseModel):
 
 
 class MemoryView(BaseModel):
-    """Structured memory plus traceable SQLite source offsets."""
+    """Structured memory plus user-readable transcript source locations."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     memory: MemoryRecord
-    citations: list[CitationRecord]
+    citations: list["MemorySourceView"]
+    source_filename: str
+
+
+class MemorySourceView(BaseModel):
+    """A memory source with offsets and one-based line numbers."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    memory_id: str
+    transcript_id: str
+    segment_id: str | None = None
+    start_offset: int = Field(ge=0)
+    end_offset: int = Field(ge=0)
+    start_line: int = Field(ge=1)
+    end_line: int = Field(ge=1)
+
+
+def _memory_view(
+    memory: MemoryRecord,
+    repository: SQLiteRepository,
+) -> MemoryView:
+    transcript = repository.get_transcript(memory.transcript_id)
+    if transcript is None:
+        raise StorageError("Memory transcript was not found")
+    return MemoryView(
+        memory=memory,
+        source_filename=transcript.filename,
+        citations=[
+            MemorySourceView(
+                memory_id=source.memory_id,
+                transcript_id=source.transcript_id,
+                segment_id=source.segment_id,
+                start_offset=source.start_offset,
+                end_offset=source.end_offset,
+                start_line=_line_number(transcript.normalized_content, source.start_offset),
+                end_line=_line_number(
+                    transcript.normalized_content,
+                    max(source.end_offset - 1, source.start_offset),
+                ),
+            )
+            for source in repository.list_memory_sources(memory.memory_id)
+        ],
+    )
+
+
+def _line_number(content: str, offset: int) -> int:
+    """Return the one-based line containing a transcript character offset."""
+
+    bounded_offset = min(max(offset, 0), len(content))
+    return content.count("\n", 0, bounded_offset) + 1
 
 
 @lru_cache(maxsize=1)
@@ -164,19 +214,7 @@ def correct_memory(
             status_code=503,
             detail="Memory correction is unavailable",
         ) from exception
-    return MemoryView(
-        memory=memory,
-        citations=[
-            CitationRecord(
-                memory_id=source.memory_id,
-                transcript_id=source.transcript_id,
-                segment_id=source.segment_id,
-                start_offset=source.start_offset,
-                end_offset=source.end_offset,
-            )
-            for source in repository.list_memory_sources(memory.memory_id)
-        ],
-    )
+    return _memory_view(memory, repository)
 
 
 @router.get("/memories", response_model=list[MemoryView])
@@ -187,18 +225,6 @@ def list_memories(
     """Return active structured memories with source offsets."""
 
     return [
-        MemoryView(
-            memory=memory,
-            citations=[
-                CitationRecord(
-                    memory_id=source.memory_id,
-                    transcript_id=source.transcript_id,
-                    segment_id=source.segment_id,
-                    start_offset=source.start_offset,
-                    end_offset=source.end_offset,
-                )
-                for source in repository.list_memory_sources(memory.memory_id)
-            ],
-        )
+        _memory_view(memory, repository)
         for memory in repository.list_memories(transcript_id=transcript_id)
     ]

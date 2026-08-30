@@ -5,7 +5,8 @@ from uuid import uuid4
 import streamlit as st
 
 from frontend.api_client import ApiClientError
-from frontend.ui import get_api_client, render_citations, show_backend_error
+from frontend.citations import remove_internal_citation_markers, render_citations
+from frontend.ui import get_api_client, show_backend_error
 
 st.title("기억과 대화")
 st.caption("검색된 기억에 근거한 답변만 생성하며, 답변 아래에 출처를 표시합니다.")
@@ -17,9 +18,12 @@ if "chat_messages" not in st.session_state:
 
 for message in st.session_state.chat_messages:
     with st.chat_message(message["role"]):
-        st.write(message["content"])
+        st.write(remove_internal_citation_markers(message["content"]))
         if message.get("citations"):
-            render_citations(message["citations"])
+            render_citations(
+                message["citations"],
+                message.get("memory_labels"),
+            )
 
 question = st.chat_input("기억에 대해 질문해 보세요")
 if question:
@@ -36,12 +40,24 @@ if question:
             except ApiClientError as exception:
                 show_backend_error("질문 처리", exception)
             else:
-                st.write(result.final_answer)
-                render_citations(result.citations)
+                user_facing_answer = remove_internal_citation_markers(
+                    result.final_answer
+                )
+                st.write(user_facing_answer)
+                memory_labels: dict[str, str] = {}
+                try:
+                    memory_labels = {
+                        item.memory.memory_id: item.memory.title
+                        for item in get_api_client().list_memories()
+                    }
+                except ApiClientError:
+                    pass
+                render_citations(result.citations, memory_labels)
                 st.session_state.chat_messages.append(
                     {
                         "role": "assistant",
-                        "content": result.final_answer,
+                        "content": user_facing_answer,
                         "citations": result.citations,
+                        "memory_labels": memory_labels,
                     }
                 )

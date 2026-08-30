@@ -309,6 +309,7 @@ def test_ingest_and_memory_list_api_return_citations(
     assert response.json()["indexed_memory_count"] == 1
     assert memories.status_code == 200
     assert memories.json()[0]["memory"]["title"] == "첫 기억"
+    assert memories.json()[0]["source_filename"] == "api-memory.txt"
     assert memories.json()[0]["citations"][0]["start_offset"] == 0
 
 
