@@ -234,3 +234,31 @@ def test_memory_gap_client_sends_explicit_confirmation() -> None:
     )
 
     assert result.resolved_memory_id == "mem_corrected"
+
+
+def test_autobiography_gap_preflight_parses_related_gaps() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        payload = __import__("json").loads(request.content)
+        assert request.url.path == "/api/v1/autobiographies/gap-check"
+        assert payload["request"] == "영화에 대한 이야기를 써 줘"
+        return httpx.Response(
+            200,
+            json={
+                "important_unresolved_gaps": [_gap_json()],
+                "retrieved_memory_ids": ["mem_001"],
+                "requires_gap_confirmation": True,
+            },
+        )
+
+    result = LifeArchiveApiClient(
+        transport=httpx.MockTransport(handler)
+    ).check_autobiography_gaps(
+        title="나의 기억",
+        request="영화에 대한 이야기를 써 줘",
+        target_period=None,
+        target_topics=["영화"],
+        chapter_count=1,
+    )
+
+    assert result.requires_gap_confirmation is True
+    assert result.important_unresolved_gaps[0].gap_id == "gap_001"

@@ -193,6 +193,14 @@ class AutobiographyResult(ApiModel):
     citations: list[Citation]
     retry_count: int
     error: str | None = None
+    important_unresolved_gaps: list[MemoryGapData] = Field(default_factory=list)
+    requires_gap_confirmation: bool = False
+
+
+class AutobiographyGapCheckResult(ApiModel):
+    important_unresolved_gaps: list[MemoryGapData]
+    retrieved_memory_ids: list[str]
+    requires_gap_confirmation: bool
 
 
 class ApiClientError(RuntimeError):
@@ -457,6 +465,7 @@ class LifeArchiveApiClient:
         target_period: str | None,
         target_topics: list[str],
         chapter_count: int,
+        proceed_with_unresolved_gaps: bool = False,
     ) -> AutobiographyResult:
         return AutobiographyResult.model_validate(
             self._request(
@@ -464,6 +473,32 @@ class LifeArchiveApiClient:
                 "autobiographies",
                 AutobiographyResult,
                 error_message="Autobiography generation failed",
+                json={
+                    "title": title,
+                    "request": request,
+                    "target_period": target_period,
+                    "target_topics": target_topics,
+                    "chapter_count": chapter_count,
+                    "proceed_with_unresolved_gaps": proceed_with_unresolved_gaps,
+                },
+            )
+        )
+
+    def check_autobiography_gaps(
+        self,
+        *,
+        title: str,
+        request: str,
+        target_period: str | None,
+        target_topics: list[str],
+        chapter_count: int,
+    ) -> AutobiographyGapCheckResult:
+        return AutobiographyGapCheckResult.model_validate(
+            self._request(
+                "POST",
+                "autobiographies/gap-check",
+                AutobiographyGapCheckResult,
+                error_message="Autobiography memory gap check failed",
                 json={
                     "title": title,
                     "request": request,

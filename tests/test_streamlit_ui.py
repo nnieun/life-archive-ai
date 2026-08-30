@@ -10,6 +10,7 @@ from streamlit.testing.v1 import AppTest
 
 from frontend.api_client import (
     ApiClientError,
+    AutobiographyGapCheckResult,
     AutobiographyResult,
     ChatResult,
     IngestionResult,
@@ -42,6 +43,13 @@ def api_client(monkeypatch) -> Mock:
     client = Mock()
     client.list_memories.return_value = []
     client.list_memory_gaps.return_value = []
+    client.check_autobiography_gaps.return_value = (
+        AutobiographyGapCheckResult(
+            important_unresolved_gaps=[],
+            retrieved_memory_ids=[],
+            requires_gap_confirmation=False,
+        )
+    )
     monkeypatch.setattr(ui, "get_api_client", lambda: client)
     return client
 
@@ -295,3 +303,77 @@ def test_autobiography_displays_each_chapter_citation(
 
     assert any("1장. 첫 장" in header.value for header in app.header)
     assert _has_memory_citation_button(app, "mem_001")
+
+
+def test_autobiography_warns_about_related_gap_before_generation(
+    api_client: Mock,
+) -> None:
+    gap = {
+        "gap_id": "gap_autobio_ui",
+        "memory_id": "mem_001",
+        "gap_type": "MISSING_LOCATION",
+        "clue_text": "정확한 극장 이름은 기억나지 않는다.",
+        "missing_field": "location_detail",
+        "people": [],
+        "confidence": 0.9,
+        "importance_score": 0.9,
+        "status": "OPEN",
+    }
+    api_client.check_autobiography_gaps.return_value = (
+        AutobiographyGapCheckResult.model_validate(
+            {
+                "important_unresolved_gaps": [gap],
+                "retrieved_memory_ids": ["mem_001"],
+                "requires_gap_confirmation": True,
+            }
+        )
+    )
+    api_client.generate_autobiography.return_value = (
+        AutobiographyResult.model_validate(
+            {
+                "autobiography": {
+                    "autobiography_id": "auto_gap_ui",
+                    "title": "나의 기억",
+                    "status": "completed",
+                    "content": {
+                        "chapters": [
+                            {
+                                "title": "영화의 날",
+                                "content": (
+                                    "정확한 극장 이름은 현재 기록에서 "
+                                    "확인되지 않습니다."
+                                ),
+                                "citations": [_citation()],
+                            }
+                        ]
+                    },
+                },
+                "completed": True,
+                "retrieved_memory_ids": ["mem_001"],
+                "citations": [_citation()],
+                "retry_count": 0,
+                "important_unresolved_gaps": [gap],
+            }
+        )
+    )
+    app = AppTest.from_file(_page_path("autobiography.py")).run()
+    app.text_area[0].set_value("영화에 대한 기억을 써 주세요.")
+    app.button[0].click().run()
+
+    assert any("중요한 기억 빈칸이 1개" in item.value for item in app.warning)
+    api_client.generate_autobiography.assert_not_called()
+
+    confirmation = next(
+        checkbox
+        for checkbox in app.checkbox
+        if checkbox.key == "autobiography-unresolved-confirm"
+    )
+    confirmation.set_value(True).run()
+    proceed_button = next(
+        button for button in app.button if button.label == "현재 자료로 생성"
+    )
+    proceed_button.click().run()
+
+    assert api_client.generate_autobiography.call_args.kwargs[
+        "proceed_with_unresolved_gaps"
+    ] is True

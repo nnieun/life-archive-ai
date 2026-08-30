@@ -7,6 +7,7 @@ from typing import Annotated, TypedDict
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from backend.app.models.qa import CitedClaim, QAEvidence
+from backend.app.models.gap import MemoryGapRecord
 from backend.app.models.timeline import TimelineEvent
 from backend.app.storage.models import (
     AutobiographyContent,
@@ -29,6 +30,7 @@ class AutobiographyInput(AutobiographyModel):
     target_topics: list[str] = Field(default_factory=list)
     chapter_count: int = Field(default=1, ge=1, le=3)
     top_k: int = Field(default=10, ge=1, le=30)
+    proceed_with_unresolved_gaps: bool = False
 
     @field_validator(
         "autobiography_id",
@@ -95,6 +97,16 @@ class AutobiographyGenerationResult(AutobiographyModel):
     citations: list[CitationRecord]
     retry_count: int = Field(ge=0)
     error: str | None = None
+    important_unresolved_gaps: list[MemoryGapRecord] = Field(default_factory=list)
+    requires_gap_confirmation: bool = False
+
+
+class AutobiographyGapCheckResult(AutobiographyModel):
+    """Important unresolved gaps related to one requested autobiography."""
+
+    important_unresolved_gaps: list[MemoryGapRecord]
+    retrieved_memory_ids: list[str]
+    requires_gap_confirmation: bool
 
 
 class AutobiographyState(TypedDict):
@@ -108,9 +120,11 @@ class AutobiographyState(TypedDict):
     target_topics: list[str]
     chapter_count: int
     top_k: int
+    proceed_with_unresolved_gaps: bool
     retrieved_memory_ids: list[str]
     evidence: list[QAEvidence]
     timeline: list[TimelineEvent]
+    important_unresolved_gaps: list[MemoryGapRecord]
     chapter_plan: list[ChapterPlanItem]
     current_chapter_index: int
     current_draft: ChapterDraft | None
