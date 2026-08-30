@@ -108,6 +108,65 @@ def _translate_integrity(exception: sqlite3.IntegrityError) -> StorageIntegrityE
     return StorageIntegrityError("SQLite rejected a record constraint")
 
 
+def _insert_correction(
+    connection: sqlite3.Connection,
+    correction: MemoryCreate,
+    sources: list[MemorySourceCreate],
+    timestamp: str,
+) -> None:
+    """Insert one already-validated correction within the caller's transaction."""
+
+    connection.execute(
+        """
+        INSERT INTO memories (
+            memory_id, transcript_id, title, summary, people_json,
+            location, event_date, date_precision, emotion, confidence,
+            uncertainty_notes, status, supersedes_memory_id,
+            created_at, updated_at, deleted_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            correction.memory_id,
+            correction.transcript_id,
+            correction.title,
+            correction.summary,
+            _json_dump(correction.people),
+            correction.location,
+            correction.event_date,
+            correction.date_precision.value,
+            correction.emotion,
+            correction.confidence,
+            correction.uncertainty_notes,
+            correction.status.value,
+            correction.supersedes_memory_id,
+            timestamp,
+            timestamp,
+            None,
+        ),
+    )
+    connection.executemany(
+        """
+        INSERT INTO memory_sources (
+            memory_source_id, memory_id, transcript_id, segment_id,
+            start_offset, end_offset, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            (
+                source.memory_source_id,
+                source.memory_id,
+                source.transcript_id,
+                source.segment_id,
+                source.start_offset,
+                source.end_offset,
+                timestamp,
+                timestamp,
+            )
+            for source in sources
+        ],
+    )
+
+
 def _transcript_record(row: sqlite3.Row) -> TranscriptRecord:
     return TranscriptRecord.model_validate(dict(row))
 
@@ -647,55 +706,7 @@ class SQLiteRepository:
         timestamp = _now_iso()
         try:
             with self._database.transaction() as connection:
-                connection.execute(
-                    """
-                    INSERT INTO memories (
-                        memory_id, transcript_id, title, summary, people_json,
-                        location, event_date, date_precision, emotion, confidence,
-                        uncertainty_notes, status, supersedes_memory_id,
-                        created_at, updated_at, deleted_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        correction.memory_id,
-                        correction.transcript_id,
-                        correction.title,
-                        correction.summary,
-                        _json_dump(correction.people),
-                        correction.location,
-                        correction.event_date,
-                        correction.date_precision.value,
-                        correction.emotion,
-                        correction.confidence,
-                        correction.uncertainty_notes,
-                        correction.status.value,
-                        correction.supersedes_memory_id,
-                        timestamp,
-                        timestamp,
-                        None,
-                    ),
-                )
-                connection.executemany(
-                    """
-                    INSERT INTO memory_sources (
-                        memory_source_id, memory_id, transcript_id, segment_id,
-                        start_offset, end_offset, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    [
-                        (
-                            source.memory_source_id,
-                            source.memory_id,
-                            source.transcript_id,
-                            source.segment_id,
-                            source.start_offset,
-                            source.end_offset,
-                            timestamp,
-                            timestamp,
-                        )
-                        for source in sources
-                    ],
-                )
+                _insert_correction(connection, correction, sources, timestamp)
         except sqlite3.IntegrityError as exception:
             raise _translate_integrity(exception) from exception
 
@@ -703,6 +714,112 @@ class SQLiteRepository:
         if record is None:
             raise StorageError("Memory correction was not persisted")
         return record
+
+    def resolve_memory_gap_candidate(
+        self,
+        gap_id: str,
+        candidate_id: str,
+        *,
+        correction: MemoryCreate | None = None,
+        sources: list[MemorySourceCreate] | None = None,
+    ) -> tuple[MemoryGapRecord, MemoryGapCandidateRecord, MemoryRecord]:
+        """Atomically accept a candidate and optionally append its correction."""
+
+        gap = self.get_memory_gap(gap_id)
+        if gap is None:
+            raise StorageNotFoundError("Memory gap was not found")
+        candidate = self.get_memory_gap_candidate(candidate_id)
+        if candidate is None:
+            raise StorageNotFoundError("Memory gap candidate was not found")
+        if candidate.gap_id != gap_id:
+            raise StorageIntegrityError("Candidate does not belong to the memory gap")
+        if gap.status in {MemoryGapStatus.RESOLVED, MemoryGapStatus.DISMISSED}:
+            raise StorageConflictError("Memory gap is already closed")
+        if candidate.status is not MemoryGapCandidateStatus.PROPOSED:
+            raise StorageConflictError("Memory gap candidate is already decided")
+        if gap.memory_id is None:
+            raise StorageIntegrityError("Memory gap has no memory to resolve")
+
+        inherited_sources = sources or []
+        if correction is not None:
+            if correction.supersedes_memory_id != gap.memory_id:
+                raise StorageIntegrityError(
+                    "Gap correction must supersede the gap memory"
+                )
+            if correction.status is not MemoryStatus.CORRECTED:
+                raise StorageIntegrityError("Gap correction must have corrected status")
+            if not inherited_sources:
+                raise StorageIntegrityError(
+                    "Gap correction requires inherited evidence"
+                )
+            if any(
+                source.memory_id != correction.memory_id
+                for source in inherited_sources
+            ):
+                raise StorageIntegrityError(
+                    "Gap correction and source identifiers must match"
+                )
+            resolved_memory_id = correction.memory_id
+        else:
+            resolved_memory_id = gap.memory_id
+            if self.get_memory(resolved_memory_id) is None:
+                raise StorageNotFoundError("Gap memory was not found")
+
+        timestamp = _now_iso()
+        try:
+            with self._database.transaction() as connection:
+                if correction is not None:
+                    _insert_correction(
+                        connection,
+                        correction,
+                        inherited_sources,
+                        timestamp,
+                    )
+                accepted = connection.execute(
+                    "UPDATE memory_gap_candidates "
+                    "SET status = 'ACCEPTED', updated_at = ? "
+                    "WHERE candidate_id = ? AND gap_id = ? AND status = 'PROPOSED'",
+                    (timestamp, candidate_id, gap_id),
+                )
+                if accepted.rowcount != 1:
+                    raise StorageConflictError(
+                        "Memory gap candidate is already decided"
+                    )
+                connection.execute(
+                    "UPDATE memory_gap_candidates "
+                    "SET status = 'REJECTED', updated_at = ? "
+                    "WHERE gap_id = ? AND candidate_id != ? "
+                    "AND status = 'PROPOSED'",
+                    (timestamp, gap_id, candidate_id),
+                )
+                resolved = connection.execute(
+                    "UPDATE memory_gaps SET status = 'RESOLVED', "
+                    "resolved_candidate_id = ?, resolved_memory_id = ?, "
+                    "resolved_at = ?, updated_at = ? "
+                    "WHERE gap_id = ? AND status NOT IN ('RESOLVED', 'DISMISSED')",
+                    (
+                        candidate_id,
+                        resolved_memory_id,
+                        timestamp,
+                        timestamp,
+                        gap_id,
+                    ),
+                )
+                if resolved.rowcount != 1:
+                    raise StorageConflictError("Memory gap is already closed")
+        except sqlite3.IntegrityError as exception:
+            raise _translate_integrity(exception) from exception
+
+        resolved_gap = self.get_memory_gap(gap_id)
+        accepted_candidate = self.get_memory_gap_candidate(candidate_id)
+        resolved_memory = self.get_memory(resolved_memory_id)
+        if (
+            resolved_gap is None
+            or accepted_candidate is None
+            or resolved_memory is None
+        ):
+            raise StorageError("Memory gap resolution was not persisted")
+        return resolved_gap, accepted_candidate, resolved_memory
 
     def update_memory(self, memory_id: str, update: MemoryUpdate) -> MemoryRecord:
         fields = update.model_fields_set

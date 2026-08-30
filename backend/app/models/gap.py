@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import (
     AwareDatetime,
@@ -10,6 +11,7 @@ from pydantic import (
     ConfigDict,
     Field,
     field_validator,
+    model_validator,
 )
 
 
@@ -40,6 +42,15 @@ class MemoryGapStatus(StrEnum):
 class MemoryGapSourceType(StrEnum):
     MEMORY = "MEMORY"
     TRANSCRIPT_SEGMENT = "TRANSCRIPT_SEGMENT"
+    EXTERNAL = "EXTERNAL"
+
+
+class MemoryGapSearchSourceType(StrEnum):
+    """Read-only evidence kinds returned by reconstruction search tools."""
+
+    MEMORY = "MEMORY"
+    TRANSCRIPT_SEGMENT = "TRANSCRIPT_SEGMENT"
+    MEMORY_GAP = "MEMORY_GAP"
     EXTERNAL = "EXTERNAL"
 
 
@@ -168,3 +179,111 @@ class MemoryGapCandidateCreate(GapModel):
 class MemoryGapCandidateRecord(MemoryGapCandidateCreate):
     created_at: AwareDatetime
     updated_at: AwareDatetime
+
+
+class MemoryGapSearchSource(GapModel):
+    """One privacy-safe, local search result exposed to the reconstruction model."""
+
+    source_id: str = Field(min_length=1)
+    source_type: MemoryGapSearchSourceType
+    title: str = Field(min_length=1)
+    content: str = Field(min_length=1, repr=False)
+    score: float = Field(ge=0.0, le=1.0)
+    memory_id: str | None = Field(default=None, min_length=1)
+    transcript_id: str | None = Field(default=None, min_length=1)
+    event_date: str | None = Field(default=None, min_length=1)
+    location: str | None = Field(default=None, min_length=1)
+    people: list[str] = Field(default_factory=list)
+
+    @field_validator("title", "content", "event_date", "location")
+    @classmethod
+    def reject_blank_search_text(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            raise ValueError("search text fields must not be blank")
+        return value
+
+    @field_validator("people")
+    @classmethod
+    def validate_search_people(cls, value: list[str]) -> list[str]:
+        if any(not person.strip() for person in value):
+            raise ValueError("people must not contain blank values")
+        if len(value) != len(set(value)):
+            raise ValueError("people must not contain duplicates")
+        return value
+
+
+class MemoryGapToolPayload(GapModel):
+    """Validated JSON payload shared between a ToolNode and graph state."""
+
+    tool_name: Literal[
+        "search_memory",
+        "search_uploaded_documents",
+        "search_memory_gaps",
+        "request_more_clues",
+    ]
+    query: str = Field(min_length=1)
+    sources: list[MemoryGapSearchSource] = Field(default_factory=list)
+    needs_user_input: bool = False
+    question: str | None = Field(default=None, min_length=1)
+
+    @model_validator(mode="after")
+    def validate_question(self) -> MemoryGapToolPayload:
+        if self.needs_user_input != (self.question is not None):
+            raise ValueError("question is required only when user input is needed")
+        return self
+
+
+class MemoryGapCandidateProposal(GapModel):
+    """Strict LLM proposal that must point back to exact returned evidence."""
+
+    value: str = Field(min_length=1, max_length=500)
+    evidence_text: str = Field(min_length=1, max_length=2000, repr=False)
+    explanation: str = Field(min_length=1, max_length=1000, repr=False)
+    llm_relation: MemoryGapCandidateRelation
+    supporting_source_ids: list[str] = Field(min_length=1, max_length=3)
+
+    @field_validator(
+        "value",
+        "evidence_text",
+        "explanation",
+    )
+    @classmethod
+    def reject_blank_proposal_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("proposal text must not be blank")
+        return value
+
+    @field_validator("supporting_source_ids")
+    @classmethod
+    def validate_proposal_sources(cls, value: list[str]) -> list[str]:
+        if any(not source_id.strip() for source_id in value):
+            raise ValueError("supporting source ids must not be blank")
+        if len(value) != len(set(value)):
+            raise ValueError("supporting source ids must be unique")
+        return value
+
+
+class MemoryGapCandidateProposalBatch(GapModel):
+    """Structured Output envelope for at most three ranked candidates."""
+
+    candidates: list[MemoryGapCandidateProposal] = Field(max_length=3)
+
+
+class MemoryGapReconstructionResult(GapModel):
+    """Public result of one bounded internal reconstruction run."""
+
+    gap: MemoryGapRecord
+    candidates: list[MemoryGapCandidateRecord]
+    searched_tools: list[str]
+    tool_call_count: int = Field(ge=0)
+    needs_more_clues: bool = False
+    user_question: str | None = None
+    message: str = Field(min_length=1)
+
+
+class MemoryGapResolutionResult(GapModel):
+    """Result of a server-authorized, user-confirmed candidate resolution."""
+
+    gap: MemoryGapRecord
+    candidate: MemoryGapCandidateRecord
+    resolved_memory_id: str = Field(min_length=1)
