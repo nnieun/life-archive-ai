@@ -396,6 +396,223 @@ def test_unknown_citation_is_rejected_before_verifier(qa_storage) -> None:
     assert verifier.inputs == []
 
 
+def _add_grounded_memory(
+    repository: SQLiteRepository,
+    *,
+    memory_id: str,
+    title: str,
+    summary: str,
+    people: list[str],
+    segment_id: str,
+    segment_content: str,
+    chunk_index: int,
+) -> RetrievalHit:
+    """Store one memory whose only extra grounding is its transcript excerpt."""
+
+    repository.create_segment(
+        TranscriptSegmentCreate(
+            segment_id=segment_id,
+            transcript_id="tr_001",
+            chunk_index=chunk_index,
+            content=segment_content,
+            start_offset=0,
+            end_offset=len(segment_content),
+        )
+    )
+    memory = repository.create_memory(
+        MemoryCreate(
+            memory_id=memory_id,
+            transcript_id="tr_001",
+            title=title,
+            summary=summary,
+            people=people,
+            location=None,
+            event_date=None,
+            date_precision=DatePrecision.UNKNOWN,
+            emotion=None,
+            confidence=0.9,
+        )
+    )
+    repository.create_memory_source(
+        MemorySourceCreate(
+            memory_source_id=f"src_{memory_id}",
+            memory_id=memory_id,
+            transcript_id="tr_001",
+            segment_id=segment_id,
+            start_offset=0,
+            end_offset=len(segment_content),
+        )
+    )
+    return RetrievalHit(
+        memory_id=memory_id,
+        score=0.1,
+        memory=memory,
+        bm25_rank=1,
+        bm25_score=2.0,
+    )
+
+
+def _approving_service(
+    repository: SQLiteRepository,
+    hits: list[RetrievalHit],
+    draft: GroundedAnswerDraft,
+    *,
+    approvals: int = 2,
+) -> tuple[GroundedQAService, QueueModel]:
+    """Build a service whose verifier approves every draft it is shown."""
+
+    verification_model = QueueModel(
+        *[
+            AnswerVerification(passed=True, reason="모든 주장이 뒷받침됩니다.")
+            for _ in range(approvals)
+        ]
+    )
+    service = GroundedQAService(
+        repository,
+        FakeRetriever(hits),
+        _models(
+            evidence=QueueModel(
+                EvidenceAssessment(
+                    sufficient=True,
+                    reason="답변 가능한 근거입니다.",
+                    selected_memory_ids=[hit.memory_id for hit in hits],
+                )
+            ),
+            answer=QueueModel(draft),
+            verification=verification_model,
+            rewrite=QueueModel(draft),
+        ),
+    )
+    return service, verification_model
+
+
+def test_verifier_approval_cannot_pass_a_number_absent_from_the_evidence(
+    qa_storage,
+) -> None:
+    repository, hit = qa_storage
+    invented = GroundedAnswerDraft(
+        claims=[
+            CitedClaim(
+                text="졸업식은 1998년에 열렸습니다.",
+                memory_ids=["mem_school"],
+            )
+        ]
+    )
+    service, verification_model = _approving_service(repository, [hit], invented)
+
+    result = service.answer_question(
+        session_id="session_invented_year",
+        question="졸업식은 언제였어?",
+    )
+
+    # The cited memory_id is real and the verifier signed off twice; only the
+    # deterministic check keeps the invented year out of the answer.
+    assert result.final_answer == REJECTED_ANSWER
+    assert result.validation_result.passed is False
+    assert "1998" in result.validation_result.reason
+    assert len(verification_model.inputs) == 2
+
+
+def test_number_found_only_in_the_transcript_excerpt_is_accepted(qa_storage) -> None:
+    repository, _hit = qa_storage
+    hit = _add_grounded_memory(
+        repository,
+        memory_id="mem_year",
+        title="졸업식",
+        summary="졸업식에서 사진을 찍었다.",
+        people=[],
+        segment_id="seg_year",
+        segment_content="1998년 졸업식에서 사진을 찍었다.",
+        chunk_index=1,
+    )
+    draft = GroundedAnswerDraft(
+        claims=[
+            CitedClaim(
+                text="졸업식은 1998년이었습니다.",
+                memory_ids=["mem_year"],
+            )
+        ]
+    )
+    service, _verification_model = _approving_service(
+        repository,
+        [hit],
+        draft,
+        approvals=1,
+    )
+
+    result = service.answer_question(
+        session_id="session_year",
+        question="졸업식은 언제였어?",
+    )
+
+    # 1998 appears in neither the title nor the summary, so passing proves the
+    # verbatim source excerpt is what the check reads.
+    assert result.validation_result.passed is True
+    assert "1998년" in result.final_answer
+    assert result.retry_count == 0
+
+
+def test_name_from_an_uncited_memory_cannot_be_attached_to_a_claim(
+    qa_storage,
+) -> None:
+    repository, school_hit = qa_storage
+    trip_hit = _add_grounded_memory(
+        repository,
+        memory_id="mem_trip",
+        title="부산 여행",
+        summary="민수와 부산에 갔다.",
+        people=["민수"],
+        segment_id="seg_trip",
+        segment_content="민수와 부산에 갔다.",
+        chunk_index=2,
+    )
+    mixed = GroundedAnswerDraft(
+        claims=[
+            CitedClaim(
+                text="졸업식에서 민수와 사진을 찍었습니다.",
+                memory_ids=["mem_school"],
+            )
+        ]
+    )
+    service, _verification_model = _approving_service(
+        repository,
+        [school_hit, trip_hit],
+        mixed,
+    )
+
+    result = service.answer_question(
+        session_id="session_mixed_people",
+        question="졸업식에서 누구와 있었어?",
+    )
+
+    assert result.final_answer == REJECTED_ANSWER
+    assert "민수" in result.validation_result.reason
+
+
+def test_citation_without_traceable_transcript_text_fails_verification(
+    qa_storage,
+) -> None:
+    repository, hit = qa_storage
+    assert repository.soft_delete_segment("seg_001") is True
+    draft = GroundedAnswerDraft(
+        claims=[
+            CitedClaim(
+                text="학교 졸업식에서 사진을 찍었습니다.",
+                memory_ids=["mem_school"],
+            )
+        ]
+    )
+    service, _verification_model = _approving_service(repository, [hit], draft)
+
+    result = service.answer_question(
+        session_id="session_untraceable",
+        question="졸업식에서 무엇을 했어?",
+    )
+
+    assert result.final_answer == REJECTED_ANSWER
+    assert result.validation_result.reason == qa.UNTRACEABLE_CITATION
+
+
 def test_prompt_injection_text_is_escaped_inside_evidence_boundary() -> None:
     citation = CitationRecord(
         memory_id="mem_001",

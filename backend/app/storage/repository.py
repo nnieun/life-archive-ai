@@ -546,21 +546,127 @@ class SQLiteRepository:
         transcript_id: str | None = None,
         *,
         include_deleted: bool = False,
+        include_superseded: bool = False,
     ) -> list[MemoryRecord]:
+        """List visible memories, hiding rows a live correction replaced.
+
+        Every reader of the memory set - timeline, retrieval, both search
+        indexes and ``GET /memories`` - goes through here, so filtering
+        supersession at this one point is what keeps them from disagreeing.
+        """
+
         clauses: list[str] = []
         values: list[Any] = []
         if transcript_id is not None:
-            clauses.append("transcript_id = ?")
+            clauses.append("memories.transcript_id = ?")
             values.append(transcript_id)
         if not include_deleted:
-            clauses.append("status != 'deleted'")
+            clauses.append("memories.status != 'deleted'")
+        if not include_superseded:
+            clauses.append(
+                "NOT EXISTS ("
+                "SELECT 1 FROM memories AS correction "
+                "WHERE correction.supersedes_memory_id = memories.memory_id "
+                "AND correction.status != 'deleted')"
+            )
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         with self._database.transaction() as connection:
             rows = connection.execute(
-                f"SELECT * FROM memories {where} ORDER BY created_at, memory_id",
+                f"SELECT memories.* FROM memories {where} "
+                "ORDER BY memories.created_at, memories.memory_id",
                 values,
             ).fetchall()
         return [_memory_record(row) for row in rows]
+
+    def get_correction_of(self, memory_id: str) -> MemoryRecord | None:
+        """Return the live correction that replaced this memory, if any."""
+
+        with self._database.transaction() as connection:
+            row = connection.execute(
+                "SELECT * FROM memories WHERE supersedes_memory_id = ? "
+                "AND status != 'deleted'",
+                (memory_id,),
+            ).fetchone()
+        return _memory_record(row) if row is not None else None
+
+    def create_memory_correction(
+        self,
+        correction: MemoryCreate,
+        sources: list[MemorySourceCreate],
+    ) -> MemoryRecord:
+        """Persist one correction and its inherited evidence atomically."""
+
+        if correction.supersedes_memory_id is None:
+            raise StorageIntegrityError("A correction must supersede a memory")
+        if correction.status is not MemoryStatus.CORRECTED:
+            raise StorageIntegrityError("A correction must have corrected status")
+        if not sources:
+            raise StorageIntegrityError("A correction requires inherited evidence")
+        if any(source.memory_id != correction.memory_id for source in sources):
+            raise StorageIntegrityError("Memory and source identifiers must match")
+        superseded = self.get_memory(correction.supersedes_memory_id)
+        if superseded is None:
+            raise StorageNotFoundError("Superseded memory was not found")
+
+        timestamp = _now_iso()
+        try:
+            with self._database.transaction() as connection:
+                connection.execute(
+                    """
+                    INSERT INTO memories (
+                        memory_id, transcript_id, title, summary, people_json,
+                        location, event_date, date_precision, emotion, confidence,
+                        uncertainty_notes, status, supersedes_memory_id,
+                        created_at, updated_at, deleted_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        correction.memory_id,
+                        correction.transcript_id,
+                        correction.title,
+                        correction.summary,
+                        _json_dump(correction.people),
+                        correction.location,
+                        correction.event_date,
+                        correction.date_precision.value,
+                        correction.emotion,
+                        correction.confidence,
+                        correction.uncertainty_notes,
+                        correction.status.value,
+                        correction.supersedes_memory_id,
+                        timestamp,
+                        timestamp,
+                        None,
+                    ),
+                )
+                connection.executemany(
+                    """
+                    INSERT INTO memory_sources (
+                        memory_source_id, memory_id, transcript_id, segment_id,
+                        start_offset, end_offset, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    [
+                        (
+                            source.memory_source_id,
+                            source.memory_id,
+                            source.transcript_id,
+                            source.segment_id,
+                            source.start_offset,
+                            source.end_offset,
+                            timestamp,
+                            timestamp,
+                        )
+                        for source in sources
+                    ],
+                )
+        except sqlite3.IntegrityError as exception:
+            raise _translate_integrity(exception) from exception
+
+        record = self.get_memory(correction.memory_id)
+        if record is None:
+            raise StorageError("Memory correction was not persisted")
+        return record
 
     def update_memory(self, memory_id: str, update: MemoryUpdate) -> MemoryRecord:
         fields = update.model_fields_set

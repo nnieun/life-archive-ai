@@ -54,6 +54,7 @@ class ExtractionModel:
 class VectorIndex:
     def __init__(self) -> None:
         self.memory_ids: list[str] = []
+        self.deleted_memory_ids: list[str] = []
 
     def index_memory(self, memory_id: str) -> MemoryIndexResult:
         self.memory_ids.append(memory_id)
@@ -61,6 +62,49 @@ class VectorIndex:
             memory_id=memory_id,
             content_hash="a" * 64,
             indexed=True,
+        )
+
+    def delete_memory(self, memory_id: str) -> bool:
+        if memory_id not in self.memory_ids:
+            return False
+        self.memory_ids.remove(memory_id)
+        self.deleted_memory_ids.append(memory_id)
+        return True
+
+
+class TwoMemoryExtractionModel:
+    """Return two candidates so a mid-loop index failure leaves one indexed."""
+
+    def invoke(self, _input: object) -> MemoryExtractionBatch:
+        return MemoryExtractionBatch(
+            memories=[
+                ExtractedMemory(
+                    title="첫 기억",
+                    summary="친구와 공원에서 만났다.",
+                    people=["친구"],
+                    location="공원",
+                    event_date=None,
+                    date_precision=DatePrecision.UNKNOWN,
+                    emotion="반가움",
+                    confidence=0.9,
+                    evidence_start_offset=0,
+                    evidence_end_offset=12,
+                    uncertainty_notes=None,
+                ),
+                ExtractedMemory(
+                    title="두번째 기억",
+                    summary="즐거운 하루였다.",
+                    people=[],
+                    location=None,
+                    event_date=None,
+                    date_precision=DatePrecision.UNKNOWN,
+                    emotion=None,
+                    confidence=0.9,
+                    evidence_start_offset=13,
+                    evidence_end_offset=21,
+                    uncertainty_notes=None,
+                ),
+            ]
         )
 
 
@@ -127,6 +171,50 @@ def test_chroma_failure_becomes_safe_ingestion_error(
         )
 
 
+def test_partial_index_failure_purges_already_indexed_vectors(
+    tmp_path: Path,
+) -> None:
+    """A failure on the second of two memories must not strand the first vector.
+
+    delete_transcript hard-deletes the SQLite rows, so once cleanup runs there
+    is no way to rediscover which memory_ids had already reached Chroma. The
+    service has to remember them as it goes and purge exactly those ids.
+    """
+
+    database = SQLiteDatabase(tmp_path / "ingestion.sqlite3")
+    database.initialize()
+    repository = SQLiteRepository(database)
+    vector_index = VectorIndex()
+    service = TranscriptIngestionService(
+        tmp_path / "raw" / "transcripts",
+        repository,
+        TwoMemoryExtractionModel(),
+        vector_index,  # type: ignore[arg-type]
+    )
+    real_index_memory = vector_index.index_memory
+    call_count = 0
+
+    def flaky_index_memory(memory_id: str) -> MemoryIndexResult:
+        nonlocal call_count
+        call_count += 1
+        if call_count == 2:
+            raise RuntimeError(r"index missing C:\private\chroma")
+        return real_index_memory(memory_id)
+
+    vector_index.index_memory = flaky_index_memory  # type: ignore[method-assign]
+
+    with pytest.raises(IngestionError, match="Memory index update failed"):
+        service.ingest(
+            filename="partial-index-failure.txt",
+            content="친구와 공원에서 만났다. 즐거운 하루였다.".encode(),
+        )
+
+    assert vector_index.memory_ids == []
+    assert len(vector_index.deleted_memory_ids) == 1
+    assert repository.list_transcripts(include_deleted=False) == []
+    database.close()
+
+
 def test_failed_ingestion_can_be_retried_with_same_content(
     ingestion_storage,
 ) -> None:
@@ -155,6 +243,30 @@ def test_failed_ingestion_can_be_retried_with_same_content(
     assert result.transcript_id is not None
     assert (raw_root / "retry.txt").read_bytes() == content
     assert repository.get_transcript(result.transcript_id) is not None
+
+
+def test_reupload_after_soft_delete_succeeds_with_a_fresh_transcript_id(
+    ingestion_storage,
+) -> None:
+    """Re-uploading content whose transcript was soft-deleted must not 500.
+
+    transcript_id is derived from content_hash, and a soft-deleted row keeps
+    that id around for audit purposes, so a second upload of the same bytes
+    used to collide on the transcripts primary key with a confusing
+    generic IngestionError instead of succeeding.
+    """
+
+    service, repository, _vector_index, _raw_root = ingestion_storage
+    content = "삭제 후 재업로드되는 내용입니다.".encode()
+    first = service.ingest(filename="first-upload.txt", content=content)
+    repository.soft_delete_transcript_cascade(first.transcript_id)
+
+    second = service.ingest(filename="second-upload.txt", content=content)
+
+    assert second.transcript_id != first.transcript_id
+    assert repository.get_transcript(first.transcript_id) is None
+    assert repository.get_transcript(second.transcript_id) is not None
+    assert len(repository.list_memories(second.transcript_id)) == 1
 
 
 def test_same_content_is_blocked_as_duplicate_after_success(
@@ -197,6 +309,7 @@ def test_ingest_and_memory_list_api_return_citations(
     assert response.json()["indexed_memory_count"] == 1
     assert memories.status_code == 200
     assert memories.json()[0]["memory"]["title"] == "첫 기억"
+    assert memories.json()[0]["source_filename"] == "api-memory.txt"
     assert memories.json()[0]["citations"][0]["start_offset"] == 0
 
 

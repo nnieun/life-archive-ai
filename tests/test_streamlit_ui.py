@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
@@ -16,6 +17,13 @@ from frontend.api_client import (
     TimelineResult,
 )
 from frontend import ui
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _page_path(page_name: str) -> str:
+    """Resolve Streamlit pages from the project root, not the tests directory."""
+    return str(PROJECT_ROOT / "frontend" / "pages" / page_name)
 
 
 def _citation() -> dict[str, object]:
@@ -38,7 +46,7 @@ def api_client(monkeypatch) -> Mock:
 def test_backend_failure_shows_user_safe_message(api_client: Mock) -> None:
     api_client.list_memories.side_effect = ApiClientError("private detail")
 
-    app = AppTest.from_file("frontend/pages/memories.py").run()
+    app = AppTest.from_file(_page_path("memories.py")).run()
 
     assert len(app.error) == 1
     assert "백엔드가 실행 중인지" in app.error[0].value
@@ -54,7 +62,7 @@ def test_service_failure_shows_request_id_without_private_detail(
         request_id="req-ui-123",
     )
 
-    app = AppTest.from_file("frontend/pages/memories.py").run()
+    app = AppTest.from_file(_page_path("memories.py")).run()
 
     assert len(app.error) == 1
     assert "서비스를 현재 사용할 수 없습니다" in app.error[0].value
@@ -74,7 +82,7 @@ def test_txt_upload_displays_processing_and_index_result(
         indexed_memory_count=1,
         memory_ids=["mem_001"],
     )
-    app = AppTest.from_file("frontend/pages/upload.py").run()
+    app = AppTest.from_file(_page_path("upload.py")).run()
 
     app.file_uploader[0].upload(
         "memory.txt",
@@ -95,7 +103,7 @@ def test_duplicate_txt_upload_shows_conflict_message(
         "conflict",
         status_code=409,
     )
-    app = AppTest.from_file("frontend/pages/upload.py").run()
+    app = AppTest.from_file(_page_path("upload.py")).run()
 
     app.file_uploader[0].upload(
         "memory.txt",
@@ -125,7 +133,7 @@ def test_chat_displays_answer_and_citation(api_client: Mock) -> None:
             "retry_count": 0,
         }
     )
-    app = AppTest.from_file("frontend/pages/chat.py").run()
+    app = AppTest.from_file(_page_path("chat.py")).run()
 
     app.chat_input[0].set_value("어디에서 만났어?").run()
 
@@ -147,7 +155,7 @@ def test_timeline_displays_precision_and_citation(api_client: Mock) -> None:
     api_client.get_timeline.return_value = TimelineResult.model_validate(
         {"events": [event], "undated_events": []}
     )
-    app = AppTest.from_file("frontend/pages/timeline.py").run()
+    app = AppTest.from_file(_page_path("timeline.py")).run()
 
     app.button[0].click().run()
 
@@ -185,7 +193,7 @@ def test_autobiography_displays_each_chapter_citation(
             }
         )
     )
-    app = AppTest.from_file("frontend/pages/autobiography.py").run()
+    app = AppTest.from_file(_page_path("autobiography.py")).run()
     app.text_area[0].set_value("친구에 대한 기억을 써 주세요.")
     app.button[0].click().run()
 

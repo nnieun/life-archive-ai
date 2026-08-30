@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
+from uuid import uuid4
 
 from backend.app.models.ingestion import IngestionResult
 from backend.app.models.transcript import TranscriptLoadRequest
@@ -81,6 +82,7 @@ class TranscriptIngestionService:
             raise IngestionError("Transcript upload could not be saved") from exception
 
         transcript_id: str | None = None
+        indexed_memory_ids: list[str] = []
         try:
             loaded = TranscriptLoader(
                 self._transcript_root,
@@ -93,6 +95,25 @@ class TranscriptIngestionService:
                     language=language,
                 )
             )
+            if (
+                self._repository.get_transcript(
+                    loaded.transcript_id,
+                    include_deleted=True,
+                )
+                is not None
+            ):
+                # transcript_id is derived from content_hash, and a
+                # soft-deleted row keeps that id forever for audit purposes
+                # (docs/PRIVACY.md). known_hashes already proved no *active*
+                # transcript has this content, so any collision here can
+                # only be a deleted leftover - mint a fresh id instead of
+                # colliding with it, rather than surfacing a raw SQLite
+                # constraint error for a perfectly legal re-upload.
+                loaded = loaded.model_copy(
+                    update={
+                        "transcript_id": f"{loaded.transcript_id}_{uuid4().hex[:8]}"
+                    }
+                )
             self._repository.create_transcript(loaded)
             transcript_id = loaded.transcript_id
             chunks = chunk_and_store_transcript(
@@ -109,17 +130,17 @@ class TranscriptIngestionService:
                     )
                 )
             try:
-                index_results = [
-                    self._vector_index.index_memory(memory.memory_id)
-                    for memory in memories
-                ]
+                index_results = []
+                for memory in memories:
+                    index_results.append(self._vector_index.index_memory(memory.memory_id))
+                    indexed_memory_ids.append(memory.memory_id)
             except Exception as exception:
                 raise IngestionError("Memory index update failed") from exception
         except TranscriptLoadError as exception:
-            self._cleanup_failed_upload(target, transcript_id)
+            self._cleanup_failed_upload(target, transcript_id, indexed_memory_ids)
             raise InvalidUploadError("TXT upload could not be processed") from exception
         except Exception as exception:
-            self._cleanup_failed_upload(target, transcript_id)
+            self._cleanup_failed_upload(target, transcript_id, indexed_memory_ids)
             if isinstance(exception, IngestionError):
                 raise
             raise IngestionError("Transcript upload could not be completed") from exception
@@ -136,7 +157,25 @@ class TranscriptIngestionService:
             memory_ids=[memory.memory_id for memory in memories],
         )
 
-    def _cleanup_failed_upload(self, target: Path, transcript_id: str | None) -> None:
+    def _cleanup_failed_upload(
+        self,
+        target: Path,
+        transcript_id: str | None,
+        indexed_memory_ids: list[str],
+    ) -> None:
+        """Undo everything a failed ingest may have done, including Chroma.
+
+        ``index_memory`` writes vectors one memory at a time, so a failure
+        partway through the loop leaves earlier vectors committed to Chroma.
+        Once ``delete_transcript`` hard-deletes the SQLite rows there is no
+        way to rediscover those memory_ids from the database, so the caller
+        must hand back exactly the ids it already indexed before cleanup runs.
+        """
+        for memory_id in indexed_memory_ids:
+            try:
+                self._vector_index.delete_memory(memory_id)
+            except Exception:
+                pass
         if transcript_id is not None:
             self._repository.delete_transcript(transcript_id)
         try:
@@ -152,11 +191,11 @@ class TranscriptIngestionService:
             or Path(stripped_name).name != stripped_name
             or "/" in stripped_name
             or "\\" in stripped_name
-            or Path(stripped_name).suffix.casefold() != ".txt"
+            or Path(stripped_name).suffix.casefold() not in {".txt", ".pdf"}
         ):
-            raise InvalidUploadError("Upload must be a plain TXT filename")
+            raise InvalidUploadError("Upload must be a plain TXT or PDF filename")
         if not content:
-            raise InvalidUploadError("TXT upload must not be empty")
+            raise InvalidUploadError("Upload must not be empty")
         try:
             decoded = content.decode(
                 "utf-8-sig" if content.startswith(b"\xef\xbb\xbf") else "utf-8"

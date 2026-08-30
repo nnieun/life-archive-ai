@@ -122,7 +122,19 @@ def _stable_id(prefix: str, values: Sequence[object]) -> str:
 def _storage_items(
     batch: MemoryExtractionBatch,
     segment: TranscriptSegmentRecord,
+    repository: SQLiteRepository,
 ) -> list[tuple[MemoryCreate, MemorySourceCreate]]:
+    """Build storage items, dropping candidates chunk overlap already stored.
+
+    Adjacent chunks share a ``chunk_overlap`` character window, so the same
+    sentence can be handed to the model twice under two different segment_ids
+    and come back as two structurally identical candidates. memory_id is a
+    hash of (transcript_id, absolute evidence span, title, summary) with no
+    segment_id or candidate index in it, so a duplicate here always hashes to
+    an id that either repeats within this batch or already exists in SQLite
+    from a previous chunk - either way it is dropped instead of stored twice.
+    """
+
     event_dates_by_evidence: dict[tuple[int, int, str], set[str]] = {}
     for candidate in batch.memories:
         if candidate.event_date is None:
@@ -141,7 +153,8 @@ def _storage_items(
         )
 
     items: list[tuple[MemoryCreate, MemorySourceCreate]] = []
-    for candidate_index, candidate in enumerate(batch.memories):
+    seen_memory_ids: set[str] = set()
+    for candidate in batch.memories:
         _validate_evidence(candidate, segment)
         absolute_start = segment.start_offset + candidate.evidence_start_offset
         absolute_end = segment.start_offset + candidate.evidence_end_offset
@@ -149,14 +162,15 @@ def _storage_items(
             "mem",
             (
                 segment.transcript_id,
-                segment.segment_id,
-                candidate_index,
                 absolute_start,
                 absolute_end,
                 candidate.title,
                 candidate.summary,
             ),
         )
+        if memory_id in seen_memory_ids or repository.get_memory(memory_id):
+            continue
+        seen_memory_ids.add(memory_id)
         source_id = _stable_id(
             "src",
             (memory_id, segment.segment_id, absolute_start, absolute_end),
@@ -217,5 +231,5 @@ def extract_and_store_segment(
     except Exception as exception:
         raise MemoryExtractionError("Memory extraction model call failed") from exception
 
-    items = _storage_items(batch, segment)
+    items = _storage_items(batch, segment, repository)
     return repository.create_memories_with_sources(items)

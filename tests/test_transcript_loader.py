@@ -11,6 +11,7 @@ from backend.app.models.transcript import TranscriptLoadRequest
 from backend.app.services.transcript_loader import (
     DuplicateTranscriptError,
     EmptyTranscriptError,
+    InvalidTranscriptPdfError,
     InvalidTranscriptEncodingError,
     InvalidTranscriptPathError,
     TranscriptLoader,
@@ -108,6 +109,16 @@ def test_loader_rejects_invalid_encoding(tmp_path: Path) -> None:
     source.write_bytes(b"\xff\xfe\x00\x00")
 
     with pytest.raises(InvalidTranscriptEncodingError, match="valid UTF-8"):
+        TranscriptLoader(transcript_root).load(_request(source))
+
+
+def test_loader_rejects_unextractable_pdf(tmp_path: Path) -> None:
+    transcript_root = tmp_path / "transcripts"
+    transcript_root.mkdir()
+    source = transcript_root / "scan.pdf"
+    source.write_bytes(b"%PDF-invalid")
+
+    with pytest.raises(InvalidTranscriptPdfError, match="PDF"):
         TranscriptLoader(transcript_root).load(_request(source))
 
 

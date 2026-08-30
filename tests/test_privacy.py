@@ -14,7 +14,10 @@ from backend.app.main import app
 from backend.app.models.memory import DatePrecision
 from backend.app.models.privacy import TranscriptDeletionResult
 from backend.app.models.transcript import LoadedTranscript
-from backend.app.services.privacy import TranscriptDeletionService
+from backend.app.services.privacy import (
+    PrivacyDeletionError,
+    TranscriptDeletionService,
+)
 from backend.app.services.retrieval import BM25MemoryIndex
 from backend.app.services.timeline import TimelineService
 from backend.app.services.vector_index import MemoryVectorIndex
@@ -228,8 +231,71 @@ def test_transcript_deletion_cleans_indexes_and_invalidates_derivatives(
     assert sqlite_repository.get_autobiography("autobio_target") is None
     assert sqlite_repository.get_autobiography("autobio_other") is not None
 
+    # Deleting again is a no-op retry, not a 404, so a failed cleanup stays
+    # recoverable. An id that never existed is still not found.
+    retry = service.delete_transcript("tr_target")
+    assert retry.deleted_segment_count == 0
+    assert retry.deleted_memory_count == 0
+    assert retry.deleted_vector_count == 0
     with pytest.raises(StorageNotFoundError):
+        service.delete_transcript("tr_never_existed")
+
+
+class _FailingVectorIndex:
+    """A vector index that refuses the first purge and accepts the retry."""
+
+    def __init__(self, inner: MemoryVectorIndex) -> None:
+        self._inner = inner
+        self.calls = 0
+
+    def delete_memory(self, memory_id: str) -> bool:
+        self.calls += 1
+        if self.calls == 1:
+            raise RuntimeError("index missing")
+        return self._inner.delete_memory(memory_id)
+
+
+@pytest.mark.integration
+def test_failed_vector_purge_leaves_sqlite_intact_and_retry_completes(
+    sqlite_repository: SQLiteRepository,
+    tmp_path: Path,
+) -> None:
+    content = "학교 졸업식에서 가족과 사진을 찍었다."
+    _create_memory_bundle(
+        sqlite_repository,
+        suffix="target",
+        content=content,
+        title="학교 졸업식",
+    )
+    vector_index = MemoryVectorIndex(
+        sqlite_repository,
+        tmp_path / "chroma",
+        embeddings=DeterministicEmbeddings(),
+        embedding_version="privacy-test:v1",
+    )
+    vector_index.rebuild_from_sqlite()
+    bm25_index = BM25MemoryIndex(sqlite_repository)
+    bm25_index.rebuild_from_sqlite()
+    failing_index = _FailingVectorIndex(vector_index)
+    service = TranscriptDeletionService(
+        sqlite_repository,
+        failing_index,
+        bm25_index,
+    )
+
+    with pytest.raises(PrivacyDeletionError, match="before SQLite"):
         service.delete_transcript("tr_target")
+
+    # Nothing was committed, so the transcript is still deletable.
+    assert sqlite_repository.get_transcript("tr_target") is not None
+    assert vector_index.get_metadata("mem_target") is not None
+
+    result = service.delete_transcript("tr_target")
+
+    assert result.deleted_memory_count == 1
+    assert result.deleted_vector_count == 1
+    assert sqlite_repository.get_transcript("tr_target") is None
+    assert vector_index.get_metadata("mem_target") is None
 
 
 def test_delete_api_returns_safe_result_and_not_found() -> None:

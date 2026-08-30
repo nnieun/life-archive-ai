@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import hashlib
+from io import BytesIO
 import re
 from collections.abc import Iterable
 from pathlib import Path
+
+from pypdf import PdfReader
 
 from backend.app.models.transcript import LoadedTranscript, TranscriptLoadRequest
 
@@ -27,6 +30,10 @@ class EmptyTranscriptError(TranscriptLoadError):
 
 class InvalidTranscriptEncodingError(TranscriptLoadError):
     """The transcript is not valid UTF-8 or UTF-8 with BOM."""
+
+
+class InvalidTranscriptPdfError(TranscriptLoadError):
+    """The PDF could not be read or did not contain extractable text."""
 
 
 class DuplicateTranscriptError(TranscriptLoadError):
@@ -92,10 +99,10 @@ class TranscriptLoader:
         if (
             not resolved_path.is_file()
             or not resolved_path.is_relative_to(self._transcript_root)
-            or resolved_path.suffix.casefold() != ".txt"
+            or resolved_path.suffix.casefold() not in {".txt", ".pdf"}
         ):
             raise InvalidTranscriptPathError(
-                "Expected a TXT file in the transcript input directory"
+                "Expected a TXT or PDF file in the transcript input directory"
             )
 
         try:
@@ -117,13 +124,18 @@ class TranscriptLoader:
         if content_hash in self._known_content_hashes:
             raise DuplicateTranscriptError("Transcript content already loaded")
 
-        encoding = "utf-8-sig" if raw_bytes.startswith(b"\xef\xbb\xbf") else "utf-8"
-        try:
-            raw_content = raw_bytes.decode(encoding)
-        except UnicodeDecodeError as exception:
-            raise InvalidTranscriptEncodingError(
-                "Transcript must be valid UTF-8"
-            ) from exception
+        if resolved_path.suffix.casefold() == ".pdf":
+            raw_content = self._extract_pdf_text(raw_bytes)
+            source_type = "pdf_text"
+        else:
+            encoding = "utf-8-sig" if raw_bytes.startswith(b"\xef\xbb\xbf") else "utf-8"
+            try:
+                raw_content = raw_bytes.decode(encoding)
+            except UnicodeDecodeError as exception:
+                raise InvalidTranscriptEncodingError(
+                    "Transcript must be valid UTF-8"
+                ) from exception
+            source_type = request.source_type
 
         normalized_content = normalize_transcript(raw_content)
         if not normalized_content:
@@ -134,7 +146,7 @@ class TranscriptLoader:
             filename=resolved_path.name,
             recording_id=request.recording_id,
             language=request.language,
-            source_type=request.source_type,
+            source_type=source_type,
             uploaded_at=request.uploaded_at,
             recorded_at=request.recorded_at,
             content_hash=content_hash,
@@ -143,3 +155,14 @@ class TranscriptLoader:
         )
         self._known_content_hashes.add(content_hash)
         return transcript
+
+    @staticmethod
+    def _extract_pdf_text(raw_bytes: bytes) -> str:
+        try:
+            reader = PdfReader(BytesIO(raw_bytes))
+            text = "\n".join(page.extract_text() or "" for page in reader.pages)
+        except Exception as exception:
+            raise InvalidTranscriptPdfError("PDF text could not be extracted") from exception
+        if not text.strip():
+            raise InvalidTranscriptPdfError("PDF does not contain extractable text")
+        return text

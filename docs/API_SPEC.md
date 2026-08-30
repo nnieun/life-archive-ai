@@ -36,6 +36,7 @@
 | GET | `/health` | 서비스 상태 |
 | POST | `/memories/ingest` | TXT 수집·기억 추출·색인 |
 | GET | `/memories` | 활성 기억과 출처 |
+| POST | `/memories/{memory_id}/corrections` | 기억 정정 |
 | POST | `/chat` | 근거 기반 질문 답변 |
 | POST | `/timeline` | 타임라인 |
 | POST | `/autobiographies` | 자서전 생성 |
@@ -132,7 +133,43 @@ Streamlit client는 원본 bytes를 base64로 전송한다.
 }
 ```
 
-실제 응답은 위 항목의 배열이다.
+실제 응답은 위 항목의 배열이다. 정정으로 대체된 기억은 이 목록에 나오지
+않는다. 타임라인·검색·자서전도 같은 조회 경로를 쓰므로 동일하게 제외된다.
+
+## POST `/memories/{memory_id}/corrections`
+
+기억을 제자리에서 고치지 않고, 원본을 대체하는 새 기억을 덧붙인다. 원본
+행은 SQLite에 그대로 남아 추출 이력을 감사할 수 있고, 원본의 `memory_sources`
+는 정정본에 그대로 승계되어 인용 추적성이 유지된다.
+
+요청 (모든 필드 선택, 최소 한 개 필요):
+
+```json
+{
+  "title": "공원에서 민수를 만난 날",
+  "summary": "민수를 만나 이야기를 나눴다.",
+  "people": ["민수"],
+  "location": "공원",
+  "event_date": "2021",
+  "date_precision": "year",
+  "emotion": null,
+  "uncertainty_notes": null
+}
+```
+
+- 생략한 필드는 원본 값을 물려받고, 명시한 `null`은 값을 지운다.
+- `event_date`와 `date_precision`은 반드시 함께 보내야 한다.
+- 정정본은 `status: "corrected"`, `supersedes_memory_id: "<원본 id>"`,
+  `confidence: 1.0`으로 저장된다.
+
+응답: `201`, `GET /memories` 항목과 같은 형태.
+
+오류:
+
+- `404` 원본 기억 없음 또는 삭제됨
+- `409` 이미 정정된 기억 (기억 하나당 정정은 한 번)
+- `422` 요청 본문이 위 규칙에 어긋남
+- `503` 저장소 사용 불가
 
 ## POST `/chat`
 

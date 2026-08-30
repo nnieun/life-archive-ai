@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS transcripts (
     source_type TEXT NOT NULL,
     uploaded_at TEXT NOT NULL,
     recorded_at TEXT,
-    content_hash TEXT NOT NULL UNIQUE,
+    content_hash TEXT NOT NULL,
     raw_content TEXT NOT NULL,
     normalized_content TEXT NOT NULL,
     created_at TEXT NOT NULL,
@@ -129,8 +129,14 @@ CREATE INDEX IF NOT EXISTS idx_memories_transcript_status
     ON memories(transcript_id, status);
 CREATE INDEX IF NOT EXISTS idx_memories_event_date
     ON memories(event_date);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_memories_supersedes
+    ON memories(supersedes_memory_id)
+    WHERE supersedes_memory_id IS NOT NULL AND status != 'deleted';
 CREATE INDEX IF NOT EXISTS idx_memory_sources_memory
     ON memory_sources(memory_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_transcripts_active_content_hash
+    ON transcripts(content_hash)
+    WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_messages_session_created
     ON conversation_messages(session_id, created_at);
 """

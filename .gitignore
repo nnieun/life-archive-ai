@@ -44,3 +44,9 @@ data/indexes/chroma/*
 !data/indexes/chroma/.gitkeep
 data/indexes/bm25/*
 !data/indexes/bm25/.gitkeep
+
+# Test reports generated locally
+reports/pytest-results.txt
+reports/pytest-results.xml
+reports/real_retrieval_results.csv
+reports/real_evaluation_manifest.json

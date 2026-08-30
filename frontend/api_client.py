@@ -10,6 +10,8 @@ import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 DEFAULT_API_URL: Final = "http://127.0.0.1:8000/api/v1"
+DEFAULT_TIMEOUT_SECONDS: Final = 60.0
+INGEST_TIMEOUT_SECONDS: Final = 180.0
 
 
 class ApiModel(BaseModel):
@@ -28,6 +30,8 @@ class Citation(ApiModel):
     segment_id: str | None = None
     start_offset: int
     end_offset: int
+    start_line: int | None = None
+    end_line: int | None = None
 
 
 class IngestionResult(ApiModel):
@@ -37,6 +41,17 @@ class IngestionResult(ApiModel):
     memory_count: int
     indexed_memory_count: int
     memory_ids: list[str]
+
+
+class TranscriptDeletionResult(ApiModel):
+    transcript_id: str
+    deleted_segment_count: int
+    deleted_memory_count: int
+    deleted_vector_count: int
+    bm25_memory_count: int
+    invalidated_conversation_message_count: int
+    invalidated_autobiography_count: int
+    raw_file_deleted: bool = False
 
 
 class MemoryData(ApiModel):
@@ -57,6 +72,7 @@ class MemoryData(ApiModel):
 class MemoryView(ApiModel):
     memory: MemoryData
     citations: list[Citation]
+    source_filename: str
 
 
 class QAValidation(ApiModel):
@@ -162,7 +178,7 @@ class LifeArchiveApiClient:
     def __init__(
         self,
         base_url: str = DEFAULT_API_URL,
-        timeout_seconds: float = 60.0,
+        timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
         transport: httpx.BaseTransport | None = None,
     ) -> None:
         self._base_url = f"{base_url.rstrip('/')}/"
@@ -176,12 +192,13 @@ class LifeArchiveApiClient:
         response_model: type[ApiModel],
         *,
         error_message: str,
+        timeout_seconds: float | None = None,
         **kwargs: object,
     ) -> ApiModel:
         try:
             with httpx.Client(
                 base_url=self._base_url,
-                timeout=self._timeout_seconds,
+                timeout=timeout_seconds or self._timeout_seconds,
                 transport=self._transport,
             ) as client:
                 response = client.request(method, path, **kwargs)
@@ -222,6 +239,7 @@ class LifeArchiveApiClient:
                 "memories/ingest",
                 IngestionResult,
                 error_message="Transcript upload failed",
+                timeout_seconds=INGEST_TIMEOUT_SECONDS,
                 json=payload,
             )
         )
@@ -243,6 +261,16 @@ class LifeArchiveApiClient:
             raise _api_error(exception.response, "Memory lookup failed") from exception
         except (httpx.HTTPError, ValueError, ValidationError) as exception:
             raise ApiClientError("Memory lookup failed") from exception
+
+    def delete_transcript(self, transcript_id: str) -> TranscriptDeletionResult:
+        return TranscriptDeletionResult.model_validate(
+            self._request(
+                "DELETE",
+                f"transcripts/{transcript_id}",
+                TranscriptDeletionResult,
+                error_message="Transcript deletion failed",
+            )
+        )
 
     def chat(
         self,
