@@ -66,6 +66,11 @@ async def http_exception_handler(
             request_id=_request_id(request),
             exception=exception.__cause__,
         )
+    if isinstance(exception.detail, dict):
+        code = exception.detail.get("code", "http_error")
+        message = exception.detail.get("message", "Request failed")
+        if isinstance(code, str) and isinstance(message, str):
+            return _error_response(request, exception.status_code, code, message)
     message = exception.detail if isinstance(exception.detail, str) else "Request failed"
     return _error_response(request, exception.status_code, "http_error", message)
 

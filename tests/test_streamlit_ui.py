@@ -39,8 +39,16 @@ def _citation() -> dict[str, object]:
 @pytest.fixture
 def api_client(monkeypatch) -> Mock:
     client = Mock()
+    client.list_memories.return_value = []
     monkeypatch.setattr(ui, "get_api_client", lambda: client)
     return client
+
+
+def _has_memory_citation_button(app: AppTest, memory_id: str) -> bool:
+    return any(
+        button.key == f"open-memory-{memory_id}-0"
+        for button in app.button
+    )
 
 
 def test_backend_failure_shows_user_safe_message(api_client: Mock) -> None:
@@ -118,6 +126,28 @@ def test_duplicate_txt_upload_shows_conflict_message(
 
 
 def test_chat_displays_answer_and_citation(api_client: Mock) -> None:
+    api_client.list_memories.return_value = [
+        MemoryView.model_validate(
+            {
+                "memory": {
+                    "memory_id": "mem_001",
+                    "transcript_id": "tr_001",
+                    "title": "첫 만남",
+                    "summary": "공원에서 친구를 만났다.",
+                    "people": ["친구"],
+                    "location": "공원",
+                    "event_date": None,
+                    "date_precision": "unknown",
+                    "emotion": None,
+                    "confidence": 0.9,
+                    "uncertainty_notes": None,
+                    "status": "active",
+                },
+                "citations": [_citation()],
+                "source_filename": "memory.txt",
+            }
+        )
+    ]
     api_client.chat.return_value = ChatResult.model_validate(
         {
             "session_id": "session_ui",
@@ -138,7 +168,8 @@ def test_chat_displays_answer_and_citation(api_client: Mock) -> None:
     app.chat_input[0].set_value("어디에서 만났어?").run()
 
     assert "공원에서 만났습니다." in str(app)
-    assert "mem_001" in str(app)
+    assert any("첫 만남" in button.label for button in app.button)
+    assert _has_memory_citation_button(app, "mem_001")
 
 
 def test_timeline_displays_precision_and_citation(api_client: Mock) -> None:
@@ -160,10 +191,10 @@ def test_timeline_displays_precision_and_citation(api_client: Mock) -> None:
     app.button[0].click().run()
 
     assert any(
-        "날짜 정밀도: year" in caption.value
+        "날짜 정밀도: 연도만 확인" in caption.value
         for caption in app.caption
     )
-    assert any("mem_001" in code.value for code in app.code)
+    assert _has_memory_citation_button(app, "mem_001")
 
 
 def test_autobiography_displays_each_chapter_citation(
@@ -198,4 +229,4 @@ def test_autobiography_displays_each_chapter_citation(
     app.button[0].click().run()
 
     assert any("1장. 첫 장" in header.value for header in app.header)
-    assert any("mem_001" in code.value for code in app.code)
+    assert _has_memory_citation_button(app, "mem_001")

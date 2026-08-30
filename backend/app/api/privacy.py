@@ -38,6 +38,7 @@ def get_transcript_deletion_service() -> TranscriptDeletionService:
             repository,
             settings.chroma_persist_directory,
             embedding_model=settings.openai_embedding_model,
+            api_key=settings.openai_api_key,
         ),
         BM25MemoryIndex(repository),
     )

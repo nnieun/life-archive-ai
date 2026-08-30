@@ -66,10 +66,15 @@ class AutobiographyModels:
 
 def build_openai_autobiography_models(
     model_name: str = DEFAULT_OPENAI_MODEL,
+    *,
+    api_key: str | None = None,
 ) -> AutobiographyModels:
     """Create strict Structured Output models for all autobiography stages."""
 
-    model = ChatOpenAI(model=model_name)
+    model_kwargs: dict[str, object] = {"model": model_name}
+    if api_key:
+        model_kwargs["api_key"] = api_key
+    model = ChatOpenAI(**model_kwargs)
     options = {
         "method": "json_schema",
         "include_raw": True,

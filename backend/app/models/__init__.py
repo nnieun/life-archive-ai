@@ -5,6 +5,8 @@ from backend.app.models.memory import (
     DatePrecision,
     ExtractedMemory,
     MemoryExtractionBatch,
+    MemoryExtractionProposal,
+    MemoryExtractionProposalBatch,
 )
 from backend.app.models.transcript import LoadedTranscript, TranscriptLoadRequest
 
@@ -15,6 +17,8 @@ __all__ = [
     "ExtractedMemory",
     "LoadedTranscript",
     "MemoryExtractionBatch",
+    "MemoryExtractionProposal",
+    "MemoryExtractionProposalBatch",
     "TranscriptChunk",
     "TranscriptLoadRequest",
 ]
