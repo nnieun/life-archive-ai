@@ -245,6 +245,30 @@ def test_failed_ingestion_can_be_retried_with_same_content(
     assert repository.get_transcript(result.transcript_id) is not None
 
 
+def test_reupload_after_soft_delete_succeeds_with_a_fresh_transcript_id(
+    ingestion_storage,
+) -> None:
+    """Re-uploading content whose transcript was soft-deleted must not 500.
+
+    transcript_id is derived from content_hash, and a soft-deleted row keeps
+    that id around for audit purposes, so a second upload of the same bytes
+    used to collide on the transcripts primary key with a confusing
+    generic IngestionError instead of succeeding.
+    """
+
+    service, repository, _vector_index, _raw_root = ingestion_storage
+    content = "삭제 후 재업로드되는 내용입니다.".encode()
+    first = service.ingest(filename="first-upload.txt", content=content)
+    repository.soft_delete_transcript_cascade(first.transcript_id)
+
+    second = service.ingest(filename="second-upload.txt", content=content)
+
+    assert second.transcript_id != first.transcript_id
+    assert repository.get_transcript(first.transcript_id) is None
+    assert repository.get_transcript(second.transcript_id) is not None
+    assert len(repository.list_memories(second.transcript_id)) == 1
+
+
 def test_same_content_is_blocked_as_duplicate_after_success(
     ingestion_storage,
 ) -> None:

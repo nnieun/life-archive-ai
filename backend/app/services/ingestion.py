@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
+from uuid import uuid4
 
 from backend.app.models.ingestion import IngestionResult
 from backend.app.models.transcript import TranscriptLoadRequest
@@ -94,6 +95,25 @@ class TranscriptIngestionService:
                     language=language,
                 )
             )
+            if (
+                self._repository.get_transcript(
+                    loaded.transcript_id,
+                    include_deleted=True,
+                )
+                is not None
+            ):
+                # transcript_id is derived from content_hash, and a
+                # soft-deleted row keeps that id forever for audit purposes
+                # (docs/PRIVACY.md). known_hashes already proved no *active*
+                # transcript has this content, so any collision here can
+                # only be a deleted leftover - mint a fresh id instead of
+                # colliding with it, rather than surfacing a raw SQLite
+                # constraint error for a perfectly legal re-upload.
+                loaded = loaded.model_copy(
+                    update={
+                        "transcript_id": f"{loaded.transcript_id}_{uuid4().hex[:8]}"
+                    }
+                )
             self._repository.create_transcript(loaded)
             transcript_id = loaded.transcript_id
             chunks = chunk_and_store_transcript(
