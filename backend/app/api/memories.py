@@ -43,6 +43,7 @@ from backend.app.services.memory_extraction import (
     MemoryExtractionError,
     MemoryExtractionOutputError,
     MemoryExtractionRefusalError,
+    build_openai_memory_localization_model,
     build_openai_memory_model,
 )
 from backend.app.services.vector_index import MemoryVectorIndex
@@ -329,6 +330,10 @@ def get_ingestion_service() -> TranscriptIngestionService:
             repository,
             settings.chroma_persist_directory,
             embedding_model=settings.openai_embedding_model,
+            api_key=settings.openai_api_key,
+        ),
+        localization_model=build_openai_memory_localization_model(
+            settings.openai_model,
             api_key=settings.openai_api_key,
         ),
     )

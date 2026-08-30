@@ -251,6 +251,44 @@ class MemoryExtractionProposalBatch(BaseModel):
     memories: list[MemoryExtractionProposal]
 
 
+class LocalizedMemoryFields(BaseModel):
+    """Korean display fields returned after evidence validation is complete."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    memory_index: int = Field(ge=0)
+    title: str = Field(min_length=1)
+    summary: str = Field(min_length=1, repr=False)
+    people: list[str]
+    location: str | None
+    emotion: str | None
+    uncertainty_notes: str | None
+
+    @field_validator("title", "summary", "location", "emotion", "uncertainty_notes")
+    @classmethod
+    def reject_blank_strings(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            raise ValueError("text fields must not be blank")
+        return value
+
+    @field_validator("people")
+    @classmethod
+    def validate_people(cls, value: list[str]) -> list[str]:
+        if any(not person.strip() for person in value):
+            raise ValueError("people must not contain blank names")
+        if len(set(value)) != len(value):
+            raise ValueError("people must not contain duplicate names")
+        return value
+
+
+class MemoryLocalizationBatch(BaseModel):
+    """Strict envelope for optional Korean display-field localization."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    memories: list[LocalizedMemoryFields]
+
+
 class MemoryExtractionBatch(BaseModel):
     """Validated internal batch whose evidence offsets are already resolved."""
 

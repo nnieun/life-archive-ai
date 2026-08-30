@@ -44,12 +44,14 @@ class TranscriptIngestionService:
         repository: SQLiteRepository,
         extraction_model: StructuredMemoryModel,
         vector_index: MemoryVectorIndex,
+        localization_model: StructuredMemoryModel | None = None,
     ) -> None:
         transcript_root.mkdir(parents=True, exist_ok=True)
         self._transcript_root = transcript_root.resolve(strict=True)
         self._repository = repository
         self._extraction_model = extraction_model
         self._vector_index = vector_index
+        self._localization_model = localization_model
 
     def ingest(
         self,
@@ -151,6 +153,7 @@ class TranscriptIngestionService:
                         self._repository,
                         self._extraction_model,
                         chunk.segment_id,
+                        localization_model=self._localization_model,
                     )
                 )
             try:

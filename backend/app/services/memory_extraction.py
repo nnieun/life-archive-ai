@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from collections.abc import Mapping, Sequence
 from typing import Protocol
 
@@ -13,13 +14,19 @@ from pydantic import ValidationError
 from backend.app.models.memory import (
     DatePrecision,
     ExtractedMemory,
+    LocalizedMemoryFields,
     MemoryExtractionBatch,
     MemoryExtractionProposal,
     MemoryExtractionProposalBatch,
+    MemoryLocalizationBatch,
 )
 from backend.app.prompts.extraction import (
     MEMORY_EXTRACTION_SYSTEM_PROMPT,
     build_memory_extraction_input,
+)
+from backend.app.prompts.localization import (
+    MEMORY_LOCALIZATION_SYSTEM_PROMPT,
+    build_memory_localization_input,
 )
 from backend.app.storage.models import (
     MemoryCreate,
@@ -32,6 +39,9 @@ from backend.app.storage.repository import SQLiteRepository
 DEFAULT_OPENAI_MODEL = "gpt-5.6-sol"
 
 MemoryModelBatch = MemoryExtractionProposalBatch | MemoryExtractionBatch
+
+_HANGUL_PATTERN = re.compile(r"[가-힣]")
+_LATIN_PATTERN = re.compile(r"[A-Za-z]")
 
 
 class StructuredMemoryModel(Protocol):
@@ -69,6 +79,25 @@ def build_openai_memory_model(
     model = ChatOpenAI(**model_kwargs)
     return model.with_structured_output(
         MemoryExtractionProposalBatch,
+        method="json_schema",
+        include_raw=True,
+        strict=True,
+    )
+
+
+def build_openai_memory_localization_model(
+    model_name: str = DEFAULT_OPENAI_MODEL,
+    *,
+    api_key: str | None = None,
+) -> StructuredMemoryModel:
+    """Configure a separate schema that cannot modify evidence or dates."""
+
+    model_kwargs: dict[str, object] = {"model": model_name, "temperature": 0}
+    if api_key:
+        model_kwargs["api_key"] = api_key
+    model = ChatOpenAI(**model_kwargs)
+    return model.with_structured_output(
+        MemoryLocalizationBatch,
         method="json_schema",
         include_raw=True,
         strict=True,
@@ -251,6 +280,179 @@ def _resolve_candidates(
     return candidates
 
 
+def _parse_localization_output(output: object) -> MemoryLocalizationBatch:
+    """Validate the optional localizer without converting failures to ingest errors."""
+
+    if isinstance(output, MemoryLocalizationBatch):
+        return output
+    if not isinstance(output, Mapping):
+        raise ValueError("Localization returned an invalid output envelope")
+    if output.get("parsing_error") is not None:
+        raise ValueError("Localization response could not be parsed")
+    parsed = output.get("parsed")
+    if parsed is None:
+        raise ValueError("Localization returned no parsed output")
+    return MemoryLocalizationBatch.model_validate(parsed)
+
+
+def _is_korean_language(language: str | None) -> bool:
+    if language is None:
+        return False
+    normalized = language.strip().casefold().replace("_", "-")
+    return (
+        normalized in {"ko", "kor", "korean", "한국어"}
+        or normalized.startswith("ko-")
+    )
+
+
+def _text_needs_korean_localization(value: str | None) -> bool:
+    if value is None or not value.strip():
+        return False
+    if _LATIN_PATTERN.search(value):
+        return True
+    if _HANGUL_PATTERN.search(value):
+        return False
+    return any(character.isalpha() for character in value)
+
+
+def _candidate_needs_korean_localization(candidate: ExtractedMemory) -> bool:
+    values = (
+        candidate.title,
+        candidate.summary,
+        *candidate.people,
+        candidate.location,
+        candidate.emotion,
+        candidate.uncertainty_notes,
+    )
+    return any(_text_needs_korean_localization(value) for value in values)
+
+
+def _localization_shape_matches(
+    candidate: ExtractedMemory,
+    localized: LocalizedMemoryFields,
+    source_evidence: str,
+) -> bool:
+    """Reject localizer responses that add or remove optional facts."""
+
+    if len(localized.people) != len(candidate.people):
+        return False
+    if any(
+        (getattr(candidate, field) is None)
+        != (getattr(localized, field) is None)
+        for field in ("location", "emotion", "uncertainty_notes")
+    ):
+        return False
+    if not (
+        _HANGUL_PATTERN.search(localized.title)
+        and _HANGUL_PATTERN.search(localized.summary)
+    ):
+        return False
+    if not _HANGUL_PATTERN.search(source_evidence):
+        return True
+
+    translated_pairs = [
+        (candidate.location, localized.location),
+        (candidate.emotion, localized.emotion),
+        (candidate.uncertainty_notes, localized.uncertainty_notes),
+        *zip(candidate.people, localized.people, strict=True),
+    ]
+    return all(
+        original is None
+        or translated is None
+        or not _text_needs_korean_localization(original)
+        or _HANGUL_PATTERN.search(translated)
+        for original, translated in translated_pairs
+    )
+
+
+def _localize_korean_display_fields(
+    candidates: list[ExtractedMemory],
+    segment: TranscriptSegmentRecord,
+    language: str | None,
+    localization_model: StructuredMemoryModel | None,
+) -> list[ExtractedMemory]:
+    """Localize display fields while keeping evidence and all facts immutable.
+
+    Localization is deliberately best-effort. Extraction has already succeeded,
+    so a refusal, network error, or invalid translation falls back to the original
+    fields instead of failing the upload.
+    """
+
+    if localization_model is None or not _is_korean_language(language):
+        return candidates
+
+    requested_indexes = [
+        index
+        for index, candidate in enumerate(candidates)
+        if _candidate_needs_korean_localization(candidate)
+    ]
+    if not requested_indexes:
+        return candidates
+
+    items: list[dict[str, object]] = []
+    for index in requested_indexes:
+        candidate = candidates[index]
+        items.append(
+            {
+                "memory_index": index,
+                "title": candidate.title,
+                "summary": candidate.summary,
+                "people": candidate.people,
+                "location": candidate.location,
+                "emotion": candidate.emotion,
+                "uncertainty_notes": candidate.uncertainty_notes,
+                "source_evidence": segment.content[
+                    candidate.evidence_start_offset : candidate.evidence_end_offset
+                ],
+            }
+        )
+
+    messages = [
+        SystemMessage(content=MEMORY_LOCALIZATION_SYSTEM_PROMPT),
+        HumanMessage(content=build_memory_localization_input(items)),
+    ]
+    try:
+        batch = _parse_localization_output(localization_model.invoke(messages))
+    except Exception:
+        return candidates
+
+    localized_by_index = {
+        localized.memory_index: localized for localized in batch.memories
+    }
+    if (
+        len(localized_by_index) != len(batch.memories)
+        or set(localized_by_index) != set(requested_indexes)
+    ):
+        return candidates
+    if any(
+        not _localization_shape_matches(
+            candidates[index],
+            localized_by_index[index],
+            segment.content[
+                candidates[index].evidence_start_offset :
+                candidates[index].evidence_end_offset
+            ],
+        )
+        for index in requested_indexes
+    ):
+        return candidates
+
+    localized_candidates = list(candidates)
+    for index in requested_indexes:
+        localized = localized_by_index[index]
+        localized_candidates[index] = candidates[index].model_copy(
+            update={
+                "title": localized.title,
+                "summary": localized.summary,
+                "people": localized.people,
+                "location": localized.location,
+                "emotion": localized.emotion,
+                "uncertainty_notes": localized.uncertainty_notes,
+            }
+        )
+    return localized_candidates
+
+
 def _stable_id(prefix: str, values: Sequence[object]) -> str:
     identity = ":".join(str(value) for value in values).encode("utf-8")
     return f"{prefix}_{hashlib.sha256(identity).hexdigest()[:24]}"
@@ -260,6 +462,9 @@ def _storage_items(
     batch: MemoryModelBatch,
     segment: TranscriptSegmentRecord,
     repository: SQLiteRepository,
+    *,
+    language: str | None = None,
+    localization_model: StructuredMemoryModel | None = None,
 ) -> list[tuple[MemoryCreate, MemorySourceCreate]]:
     """Build storage items, dropping candidates chunk overlap already stored.
 
@@ -273,6 +478,12 @@ def _storage_items(
     """
 
     candidates = _resolve_candidates(batch, segment)
+    candidates = _localize_korean_display_fields(
+        candidates,
+        segment,
+        language,
+        localization_model,
+    )
     event_dates_by_evidence: dict[tuple[int, int, str], set[str]] = {}
     for candidate in candidates:
         if candidate.event_date is None:
@@ -344,6 +555,8 @@ def extract_and_store_segment(
     repository: SQLiteRepository,
     model: StructuredMemoryModel,
     segment_id: str,
+    *,
+    localization_model: StructuredMemoryModel | None = None,
 ) -> list[MemoryRecord]:
     """Extract validated memories from one stored segment and save atomically."""
     segment = repository.get_segment(segment_id)
@@ -370,5 +583,16 @@ def extract_and_store_segment(
     except Exception as exception:
         raise MemoryExtractionError("Memory extraction model call failed") from exception
 
-    items = _storage_items(batch, segment, repository)
+    language: str | None = None
+    if localization_model is not None:
+        transcript = repository.get_transcript(segment.transcript_id)
+        if transcript is not None:
+            language = transcript.language
+    items = _storage_items(
+        batch,
+        segment,
+        repository,
+        language=language,
+        localization_model=localization_model,
+    )
     return repository.create_memories_with_sources(items)
