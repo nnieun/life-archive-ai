@@ -30,6 +30,8 @@ def show_backend_error(action: str, exception: ApiClientError) -> None:
         message = f"{action} 요청 내용을 확인해 주세요."
     elif exception.status_code == 409:
         message = f"{action} 요청이 기존 데이터와 충돌했습니다."
+    elif exception.status_code == 428:
+        message = f"{action} 전에 사용자의 확인이 필요합니다."
     elif exception.status_code == 503:
         message = (
             f"{action}에 필요한 서비스를 현재 사용할 수 없습니다. "

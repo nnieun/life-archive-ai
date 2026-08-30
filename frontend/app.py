@@ -15,6 +15,7 @@ navigation = st.navigation(
     [
         st.Page("pages/upload.py", title="업로드", icon=":material/upload_file:"),
         st.Page("pages/memories.py", title="기억", icon=":material/book_2:"),
+        st.Page("pages/gaps.py", title="기억 빈칸", icon=":material/find_in_page:"),
         st.Page("pages/chat.py", title="대화", icon=":material/chat:"),
         st.Page("pages/timeline.py", title="타임라인", icon=":material/timeline:"),
         st.Page(

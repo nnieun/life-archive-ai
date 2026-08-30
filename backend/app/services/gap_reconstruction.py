@@ -49,8 +49,11 @@ from backend.app.prompts.gap_reconstruction import (
     build_gap_candidate_input,
 )
 from backend.app.services.corrections import (
+    MemoryAlreadyCorrectedError,
     MemoryCorrectionService,
+    MemoryNotFoundError,
     PreparedMemoryCorrection,
+    UntraceableMemoryError,
 )
 from backend.app.services.retrieval import tokenize_for_bm25
 from backend.app.storage.models import MemoryRecord
@@ -147,6 +150,10 @@ class MemoryGapCandidateSourceError(MemoryGapReconstructionError):
 
 class MemoryGapResolutionUnsupportedError(MemoryGapReconstructionError):
     """The selected candidate cannot safely update the target memory field."""
+
+
+class MemoryGapTargetChangedError(MemoryGapReconstructionError):
+    """The gap's original memory was independently replaced before confirmation."""
 
 
 def build_openai_memory_gap_models(
@@ -524,10 +531,23 @@ class MemoryGapResolutionService:
         correction = _candidate_correction(gap, memory, candidate.value)
         prepared: PreparedMemoryCorrection | None = None
         if correction is not None:
-            prepared = self._corrections.prepare_memory_correction(
-                memory.memory_id,
-                correction,
-            )
+            try:
+                prepared = self._corrections.prepare_memory_correction(
+                    memory.memory_id,
+                    correction,
+                )
+            except MemoryAlreadyCorrectedError as exception:
+                raise MemoryGapTargetChangedError(
+                    "Gap memory was already replaced"
+                ) from exception
+            except MemoryNotFoundError as exception:
+                raise MemoryGapTargetChangedError(
+                    "Gap memory is no longer active"
+                ) from exception
+            except UntraceableMemoryError as exception:
+                raise MemoryGapCandidateSourceError(
+                    "Gap memory has no traceable transcript source"
+                ) from exception
         resolved_gap, accepted, resolved_memory = (
             self._repository.resolve_memory_gap_candidate(
                 gap_id,

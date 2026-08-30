@@ -13,6 +13,7 @@ from frontend.api_client import (
     AutobiographyResult,
     ChatResult,
     IngestionResult,
+    MemoryGapView,
     MemoryView,
     TimelineResult,
 )
@@ -40,6 +41,7 @@ def _citation() -> dict[str, object]:
 def api_client(monkeypatch) -> Mock:
     client = Mock()
     client.list_memories.return_value = []
+    client.list_memory_gaps.return_value = []
     monkeypatch.setattr(ui, "get_api_client", lambda: client)
     return client
 
@@ -87,6 +89,7 @@ def test_txt_upload_displays_processing_and_index_result(
         filename="memory.txt",
         segment_count=2,
         memory_count=1,
+        gap_count=2,
         indexed_memory_count=1,
         memory_ids=["mem_001"],
     )
@@ -102,6 +105,7 @@ def test_txt_upload_displays_processing_and_index_result(
     assert api_client.ingest_transcript.call_args.args[0] == "memory.txt"
     assert len(app.success) == 1
     assert "1개의 기억" in app.success[0].value
+    assert any("기억에서 확인이 필요한 빈칸 2개" in item.value for item in app.warning)
 
 
 def test_duplicate_txt_upload_shows_conflict_message(
@@ -123,6 +127,67 @@ def test_duplicate_txt_upload_shows_conflict_message(
     assert len(app.error) == 1
     assert "이미 등록된 TXT" in app.error[0].value
     assert "백엔드가 실행 중인지" not in app.error[0].value
+
+
+def test_memory_gap_page_uses_plain_korean_and_requires_confirmation(
+    api_client: Mock,
+) -> None:
+    api_client.list_memory_gaps.return_value = [
+        MemoryGapView.model_validate(
+            {
+                "gap": {
+                    "gap_id": "gap_ui",
+                    "memory_id": "mem_001",
+                    "gap_type": "MISSING_LOCATION",
+                    "clue_text": "극장 이름은 기억나지 않는다.",
+                    "missing_field": "location_detail",
+                    "period_start": "2001",
+                    "location": "대구 동성로",
+                    "people": ["친구"],
+                    "confidence": 0.9,
+                    "importance_score": 0.8,
+                    "status": "CANDIDATE_FOUND",
+                },
+                "candidates": [
+                    {
+                        "candidate_id": "gcan_ui",
+                        "gap_id": "gap_ui",
+                        "value": "아카데미극장",
+                        "explanation": "같은 시기와 장소의 기록입니다.",
+                        "deterministic_score": 0.9,
+                        "llm_relation": "SUPPORTS",
+                        "supporting_source_ids": ["seg_001"],
+                        "status": "PROPOSED",
+                    }
+                ],
+            }
+        )
+    ]
+
+    app = AppTest.from_file(_page_path("gaps.py")).run()
+
+    assert "정확한 장소가 비어 있어요" in str(app)
+    assert "아카데미극장" in str(app)
+    assert "불확실성 메모" not in str(app)
+    resolve_button = next(
+        button for button in app.button if button.key == "gap-resolve-gap_ui"
+    )
+    assert resolve_button.disabled is True
+
+    confirm = next(
+        checkbox for checkbox in app.checkbox if checkbox.key == "gap-confirm-gap_ui"
+    )
+    confirm.set_value(True).run()
+    resolve_button = next(
+        button for button in app.button if button.key == "gap-resolve-gap_ui"
+    )
+    resolve_button.click().run()
+
+    api_client.resolve_memory_gap.assert_called_once_with(
+        "gap_ui",
+        "gcan_ui",
+        user_confirmed=True,
+    )
 
 
 def test_chat_displays_answer_and_citation(api_client: Mock) -> None:

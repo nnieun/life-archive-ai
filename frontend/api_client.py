@@ -78,6 +78,61 @@ class MemoryView(ApiModel):
     source_filename: str
 
 
+class MemoryGapData(ApiModel):
+    gap_id: str
+    memory_id: str | None = None
+    gap_type: str
+    clue_text: str
+    missing_field: str | None = None
+    period_start: str | None = None
+    period_end: str | None = None
+    location: str | None = None
+    people: list[str] = Field(default_factory=list)
+    confidence: float
+    importance_score: float
+    status: str
+    web_search_consent: bool = False
+    user_clues: list[str] = Field(default_factory=list)
+    resolved_candidate_id: str | None = None
+    resolved_memory_id: str | None = None
+
+
+class MemoryGapCandidateData(ApiModel):
+    candidate_id: str
+    gap_id: str
+    value: str
+    explanation: str
+    deterministic_score: float
+    llm_relation: str
+    supporting_source_ids: list[str] = Field(default_factory=list)
+    status: str
+
+
+class MemoryGapView(ApiModel):
+    gap: MemoryGapData
+    candidates: list[MemoryGapCandidateData] = Field(default_factory=list)
+
+
+class MemoryGapListResponse(ApiModel):
+    items: list[MemoryGapView]
+
+
+class MemoryGapReconstructionResult(ApiModel):
+    gap: MemoryGapData
+    candidates: list[MemoryGapCandidateData]
+    searched_tools: list[str]
+    tool_call_count: int
+    needs_more_clues: bool = False
+    user_question: str | None = None
+    message: str
+
+
+class MemoryGapResolutionResult(ApiModel):
+    gap: MemoryGapData
+    candidate: MemoryGapCandidateData
+    resolved_memory_id: str
+
+
 class QAValidation(ApiModel):
     stage: str
     passed: bool
@@ -285,6 +340,73 @@ class LifeArchiveApiClient:
                 f"transcripts/{transcript_id}",
                 TranscriptDeletionResult,
                 error_message="Transcript deletion failed",
+            )
+        )
+
+    def list_memory_gaps(self, *, include_closed: bool = False) -> list[MemoryGapView]:
+        result = MemoryGapListResponse.model_validate(
+            self._request(
+                "GET",
+                "memory-gaps",
+                MemoryGapListResponse,
+                error_message="Memory gap lookup failed",
+                params={"include_closed": str(include_closed).lower()},
+            )
+        )
+        return result.items
+
+    def reconstruct_memory_gap(
+        self,
+        gap_id: str,
+    ) -> MemoryGapReconstructionResult:
+        return MemoryGapReconstructionResult.model_validate(
+            self._request(
+                "POST",
+                f"memory-gaps/{gap_id}/reconstruct",
+                MemoryGapReconstructionResult,
+                error_message="Memory gap reconstruction failed",
+                timeout_seconds=INGEST_TIMEOUT_SECONDS,
+            )
+        )
+
+    def add_memory_gap_clue(self, gap_id: str, clue: str) -> MemoryGapView:
+        return MemoryGapView.model_validate(
+            self._request(
+                "POST",
+                f"memory-gaps/{gap_id}/clues",
+                MemoryGapView,
+                error_message="Memory gap clue update failed",
+                json={"clue": clue},
+            )
+        )
+
+    def resolve_memory_gap(
+        self,
+        gap_id: str,
+        candidate_id: str,
+        *,
+        user_confirmed: bool,
+    ) -> MemoryGapResolutionResult:
+        return MemoryGapResolutionResult.model_validate(
+            self._request(
+                "POST",
+                f"memory-gaps/{gap_id}/resolve",
+                MemoryGapResolutionResult,
+                error_message="Memory gap resolution failed",
+                json={
+                    "candidate_id": candidate_id,
+                    "user_confirmed": user_confirmed,
+                },
+            )
+        )
+
+    def dismiss_memory_gap(self, gap_id: str) -> MemoryGapView:
+        return MemoryGapView.model_validate(
+            self._request(
+                "POST",
+                f"memory-gaps/{gap_id}/dismiss",
+                MemoryGapView,
+                error_message="Memory gap dismissal failed",
             )
         )
 

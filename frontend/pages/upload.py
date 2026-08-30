@@ -29,6 +29,14 @@ if st.button("처리 및 인덱싱", type="primary", disabled=uploaded_file is N
         else:
             status.write(f"세그먼트 {result.segment_count}개 처리")
             status.write(f"구조화된 기억 {result.memory_count}개 생성")
+            status.write(f"확인이 필요한 기억 빈칸 {result.gap_count}개 발견")
             status.update(label="처리와 인덱싱이 완료되었습니다.", state="complete")
             st.success(f"{result.indexed_memory_count}개의 기억을 검색 인덱스에 반영했습니다.")
+            if result.gap_count:
+                st.warning(
+                    f"기억에서 확인이 필요한 빈칸 {result.gap_count}개를 찾았습니다. "
+                    "원본과 다른 기억을 바꾸지는 않았습니다."
+                )
+                if st.button("기억 빈칸 확인", key="open-memory-gaps"):
+                    st.switch_page("pages/gaps.py")
             st.code(result.transcript_id)
