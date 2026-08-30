@@ -14,6 +14,7 @@ SQLite는 유일한 Source of Truth다. ChromaDB와 BM25는 활성 SQLite
 |---|---|---|
 | `transcript_id` | str | `tr_` 기반 결정적 ID |
 | `filename` | str | 안전한 TXT 파일명 |
+| `source_path` | str \| null | 프로젝트 내부의 불변 원본 상대 경로 |
 | `recording_id` | str \| null | 선택적 외부 녹음 ID |
 | `language` | str \| null | 언어 metadata |
 | `source_type` | str | 입력 유형 |
@@ -27,9 +28,8 @@ SQLite는 유일한 Source of Truth다. ChromaDB와 BM25는 활성 SQLite
 raw 파일은 `data/raw/transcripts`에 불변으로 저장되며 SQLite의
 `raw_content`도 normalized content와 분리된다.
 
-`source_path` stores the relative path of the immutable original, for example
-`data/raw/transcripts/recording_001.txt`. Absolute local paths are not exposed
-through the API.
+`source_path`에는 `data/raw/transcripts/recording_001.txt` 같은 프로젝트 기준
+상대 경로만 저장한다. 절대 로컬 경로는 API로 노출하지 않는다.
 
 ## 3. Transcript Segment
 
@@ -96,7 +96,43 @@ class CitationRecord:
 `memory_sources`에는 별도 `memory_source_id`와 timestamps가 추가된다.
 모든 offset은 normalized transcript의 반열림 범위다.
 
-## 6. Conversation
+## 6. Memory Gap과 Candidate
+
+`memory_gaps`는 원래 Memory와 분리한다. 탐지·검색·후보 생성 과정에서 원래
+Memory 필드를 바꾸지 않는다.
+
+| 필드 | 설명 |
+|---|---|
+| `gap_id` | 안정적인 hash 기반 PK |
+| `memory_id` | 확인이 필요한 Memory FK |
+| `gap_type` | 장소·인물·날짜·사건·충돌·약한 근거 유형 |
+| `clue_text` | 검색에 사용할 근거 문구 |
+| `missing_field` | 안전하게 보강할 대상 필드 |
+| `period_start`, `period_end` | 확인된 기간 단서 |
+| `location`, `people_json` | 확인된 맥락 |
+| `confidence`, `importance_score` | 탐지 신뢰도와 사용자 재제안 우선순위 |
+| `status` | OPEN/SEARCHING/CANDIDATE_FOUND/WAITING_USER/RESOLVED/DISMISSED |
+| `source_type`, `source_id` | 빈칸을 만든 내부 근거 |
+| `user_clues_json` | 사용자가 나중에 추가한 단서 |
+| `resolved_candidate_id`, `resolved_memory_id` | 확인 완료 결과 |
+
+`memory_gap_candidates`는 자동 정답이 아니라 사용자 확인 전 후보다.
+
+| 필드 | 설명 |
+|---|---|
+| `candidate_id`, `gap_id` | 후보 PK와 gap FK |
+| `value` | exact evidence 안에서 찾은 제안값 |
+| `explanation` | 사용자용 관계 설명 |
+| `deterministic_score` | 서버가 계산한 검색·맥락 점수 |
+| `llm_relation` | SUPPORTS/RELATED/CONFLICTS/UNKNOWN |
+| `supporting_source_ids_json` | 내부 Memory·segment·gap ID |
+| `external_sources_json` | 향후 동의 기반 외부 provenance 슬롯 |
+| `status` | PROPOSED/ACCEPTED/REJECTED |
+
+사용자 확인 시 correction Memory, inherited source, 후보 상태와 gap 상태를 한
+transaction으로 저장한다. 원래 Memory는 감사 가능한 상태로 남는다.
+
+## 7. Conversation
 
 `conversation_sessions`:
 
@@ -113,7 +149,7 @@ class CitationRecord:
 
 삭제된 기억을 인용한 message는 개인정보 삭제 흐름에서 논리 삭제된다.
 
-## 7. Timeline
+## 8. Timeline
 
 Timeline은 별도 영구 테이블이 아니라 현재 SQLite memory에서 계산되는
 응답 모델이다.
@@ -139,7 +175,7 @@ class TimelineEvent:
 `TimelineResult`는 `events`, `undated_events`, 선택적 `start_date`,
 `end_date`를 포함한다.
 
-## 8. Autobiography
+## 9. Autobiography
 
 `autobiographies` 테이블:
 
@@ -155,7 +191,11 @@ class TimelineEvent:
 draft를 저장하고, 검증된 장만 누적 저장하며 요청한 모든 장이 통과하면
 `completed`가 된다.
 
-## 9. Chroma 모델
+자서전 요청과 관련된 중요 미해결 gap은 생성 전에 조회한다. 현재 자료로
+생성하면 gap 자체는 autobiography JSON에 영구 복사하지 않고, 생성·검증
+컨텍스트에 전달해 미확인 후보를 사실처럼 쓰지 못하게 한다.
+
+## 10. Chroma 모델
 
 ```text
 id: memory_id
@@ -171,7 +211,7 @@ metadata:
 않는다. 검색 결과는 `memory_id`와 distance를 사용해 SQLite에서 현재
 MemoryRecord를 다시 불러온다.
 
-## 10. 삭제 수명주기
+## 11. 삭제 수명주기
 
 ```mermaid
 flowchart TD

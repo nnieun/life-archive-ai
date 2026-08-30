@@ -12,11 +12,14 @@ erDiagram
     memories ||--o{ memory_sources : cites
     transcript_segments o|--o{ memory_sources : supports
     memories o|--o{ memories : supersedes
+    memories o|--o{ memory_gaps : raises
+    memory_gaps ||--o{ memory_gap_candidates : proposes
     conversation_sessions ||--o{ conversation_messages : contains
 
     transcripts {
         TEXT transcript_id PK
         TEXT filename
+        TEXT source_path
         TEXT recording_id UK
         TEXT language
         TEXT source_type
@@ -72,6 +75,44 @@ erDiagram
         TEXT updated_at
     }
 
+    memory_gaps {
+        TEXT gap_id PK
+        TEXT memory_id FK
+        TEXT gap_type
+        TEXT clue_text
+        TEXT missing_field
+        TEXT period_start
+        TEXT period_end
+        TEXT location
+        TEXT people_json
+        REAL confidence
+        REAL importance_score
+        TEXT status
+        TEXT source_type
+        TEXT source_id
+        INTEGER web_search_consent
+        TEXT user_clues_json
+        TEXT resolved_candidate_id
+        TEXT resolved_memory_id FK
+        TEXT created_at
+        TEXT updated_at
+        TEXT resolved_at
+    }
+
+    memory_gap_candidates {
+        TEXT candidate_id PK
+        TEXT gap_id FK
+        TEXT value
+        TEXT explanation
+        REAL deterministic_score
+        TEXT llm_relation
+        TEXT supporting_source_ids_json
+        TEXT external_sources_json
+        TEXT status
+        TEXT created_at
+        TEXT updated_at
+    }
+
     conversation_sessions {
         TEXT session_id PK
         TEXT title
@@ -115,6 +156,9 @@ erDiagram
   `unknown`으로 제한한다.
 - 날짜가 없으면 정밀도는 `unknown`, 날짜가 있으면 `unknown`이 아니어야 한다.
 - memory와 memory source는 evidence 검증 후 원자적으로 저장한다.
+- memory gap 후보는 사용자 확인 전 `PROPOSED`로만 저장한다.
+- 확인 시 append-only correction, 후보 ACCEPTED/REJECTED와 gap RESOLVED를
+  한 transaction으로 저장한다.
 - `uploaded_at`/`recorded_at`은 transcript metadata이며 memory
   `event_date`를 대신하지 않는다.
 

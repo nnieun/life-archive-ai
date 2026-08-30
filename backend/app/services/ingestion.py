@@ -1,4 +1,4 @@
-"""Immutable TXT upload, extraction, and indexing orchestration."""
+"""Immutable TXT/PDF upload, extraction, and indexing orchestration."""
 
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ class IngestionError(RuntimeError):
 
 
 class InvalidUploadError(IngestionError):
-    """The upload name or content is not an acceptable TXT file."""
+    """The upload name or content is not an acceptable TXT/PDF file."""
 
 
 class UploadConflictError(IngestionError):

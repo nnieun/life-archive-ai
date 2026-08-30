@@ -158,7 +158,67 @@ flowchart TB
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-이 수정 시점의 결과는 `174 passed`였습니다.
+통과 개수는 기능 추가에 따라 달라지므로 숫자를 문서에 고정하지 않고, 위 명령의
+최종 실패·오류가 0인지 확인합니다.
+
+## 기억 빈칸 복원 오류를 구분하는 방법
+
+기억 빈칸 복원은 업로드 실패와 별도 흐름입니다. 먼저 업로드 응답의
+`gap_count`와 `gap_ids`가 생성되었는지 확인한 뒤, 기억 빈칸 화면에서 복원을
+실행합니다. 현재 MVP는 사용자가 올린 기억과 원문만 검색하며 웹 요청을 보내지
+않습니다.
+
+### 정상 처리 순서
+
+1. `search_memory`로 구조화된 기억을 검색합니다.
+2. 부족하면 `search_uploaded_documents`로 SQLite에 저장된 업로드 원문 조각을
+   검색합니다.
+3. 그래도 부족하면 `search_memory_gaps`로 유사한 빈칸과 단서를 검색합니다.
+4. 근거가 없으면 `request_more_clues`로 질문만 만들고, 후보를 꾸며내지 않습니다.
+5. 후보는 화면에 제시만 하며 사용자의 확인 전에는 기억을 수정하지 않습니다.
+
+### 오류 코드별 의미
+
+| 오류 코드 | 확인할 내용 |
+|---|---|
+| `memory_gap_not_found` | 삭제되었거나 잘못된 `gap_id`인지 확인 |
+| `memory_gap_already_closed` | 이미 해결·닫기 처리한 빈칸인지 확인 |
+| `memory_gap_clue_duplicate` | 같은 사용자 단서를 두 번 보냈는지 확인 |
+| `memory_gap_tool_policy_violation` | 모델이 도구 순서를 건너뛰거나 같은 도구를 반복 호출했는지 확인 |
+| `memory_gap_candidate_output_invalid` | 후보 JSON 형식, source ID, exact evidence/value 포함 여부 확인 |
+| `memory_gap_candidate_source_invalid` | 후보 생성 후 내부 근거가 삭제·변경되었는지 확인 |
+| `memory_gap_candidate_mismatch` | 다른 빈칸에서 나온 후보 ID인지 확인 |
+| `memory_gap_target_changed` | 후보 생성 뒤 대상 기억이 이미 정정되었는지 확인 |
+| `memory_gap_confirmation_required` | 요청의 `user_confirmed`가 명시적으로 `true`인지 확인 |
+| `memory_gap_model_unavailable` | `.env`의 OpenAI 키·모델 설정과 모델 API 상태 확인 |
+| `memory_gap_search_unavailable` | SQLite·Chroma 초기화와 검색 인덱스 상태 확인 |
+
+`memory_gap_candidate_output_invalid`는 후보를 저장하지 않은 안전 실패입니다.
+모델이 반환한 `supporting_source_ids`가 실제 도구 결과에 있어야 하고,
+`evidence_text`는 해당 source 원문에, 후보 `value`는 그 evidence에 정확히
+포함되어야 합니다. 로그에는 개인 원문이나 API 키를 남기지 말고 오류 코드와
+요청 ID로만 추적합니다.
+
+### 후보를 확인했는데 반영되지 않는 경우
+
+화면에서 후보를 선택하는 것만으로는 부족합니다. “이 후보를 내 기억으로
+확정합니다” 체크 후 반영해야 합니다. 서버는 `candidate_id`와
+`user_confirmed=true`를 다시 검사하고, 성공하면 다음 변경을 하나의 transaction으로
+저장합니다.
+
+- 원래 기억을 대체하는 append-only 정정 기억 생성
+- 선택 후보 `ACCEPTED`, 나머지 후보 `REJECTED`
+- 빈칸 `RESOLVED`와 정정 기억 ID 연결
+
+중간에 하나라도 실패하면 전체 transaction이 rollback되므로 일부 상태만 남지
+않습니다.
+
+### 자서전이 바로 생성되지 않는 경우
+
+요청과 관련된 중요도 `0.65` 이상의 미해결 빈칸이 있으면 먼저 확인 화면을
+보여주는 정상 동작입니다. “먼저 채우기”로 기억 빈칸 화면에 가거나, 명시적으로
+현재 기록만으로 진행할 수 있습니다. 진행하더라도 미확정 후보 값은 자서전의
+사실 근거로 사용할 수 없습니다.
 
 ## PDF 업로드
 
