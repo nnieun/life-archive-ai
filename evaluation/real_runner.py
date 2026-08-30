@@ -29,6 +29,8 @@ from evaluation.runner import (
 )
 
 REAL_SEARCH_METHODS = ("dense", "mmr", "bm25", "hybrid")
+EMBEDDING_SEARCH_METHODS = frozenset({"dense", "mmr", "hybrid"})
+EMBEDDING_INPUT_USD_PER_MILLION_TOKENS = 0.02
 
 
 class EmbeddingProvider(Protocol):
@@ -108,8 +110,10 @@ def _rank_chunks(
     method: str,
     embeddings: EmbeddingProvider,
     document_vectors: list[list[float]],
+    query_vector: list[float] | None = None,
 ) -> list[EvaluationChunk]:
-    query_vector = embeddings.embed_query(query)
+    if query_vector is None:
+        query_vector = embeddings.embed_query(query)
     if method == "dense":
         indexes = _dense_rank(chunks, query_vector, document_vectors)
     elif method == "mmr":
@@ -161,9 +165,19 @@ def evaluate_real(
     rows: list[dict[str, object]] = []
     for strategy in CHUNK_STRATEGIES:
         chunks = build_chunks(transcript, spans, strategy)
+        document_started = time.perf_counter()
         document_vectors = embeddings.embed_documents([chunk.text for chunk in chunks])
+        document_embedding_latency_ms = (time.perf_counter() - document_started) * 1000
         if len(document_vectors) != len(chunks):
             raise ValueError("Embedding provider returned an unexpected vector count")
+        query_vectors: dict[str, list[float]] = {}
+        query_embedding_latency_ms: dict[str, float] = {}
+        for query in dataset.queries:
+            query_started = time.perf_counter()
+            query_vectors[query.query_id] = embeddings.embed_query(query.question)
+            query_embedding_latency_ms[query.query_id] = (
+                time.perf_counter() - query_started
+            ) * 1000
         for method in REAL_SEARCH_METHODS:
             for query in dataset.queries:
                 started = time.perf_counter()
@@ -173,10 +187,22 @@ def evaluate_real(
                     method,
                     embeddings,
                     document_vectors,
+                    query_vectors[query.query_id],
                 )
                 ranked_memories = _memory_ranking(ranked_chunks, spans)
-                latency_ms = (time.perf_counter() - started) * 1000
+                ranking_latency_ms = (time.perf_counter() - started) * 1000
                 relevant = set(query.relevant_memory_ids)
+                query_input_length = (
+                    len(query.question) if method in EMBEDDING_SEARCH_METHODS else 0
+                )
+                estimated_input_tokens = math.ceil(
+                    (sum(len(chunk.text) for chunk in chunks) + query_input_length) / 4
+                )
+                estimated_cost_usd = (
+                    estimated_input_tokens
+                    / 1_000_000
+                    * EMBEDDING_INPUT_USD_PER_MILLION_TOKENS
+                )
                 for top_k in TOP_K_VALUES:
                     selected = ranked_memories[:top_k]
                     matched = relevant.intersection(selected)
@@ -190,7 +216,18 @@ def evaluate_real(
                             "retrieved_memory_ids": "|".join(selected),
                             "recall_at_k": len(matched) / len(relevant),
                             "contains_answer": int(bool(matched)),
-                            "retrieval_latency_ms": latency_ms,
+                            "retrieval_latency_ms": (
+                                document_embedding_latency_ms
+                                + query_embedding_latency_ms[query.query_id]
+                                + ranking_latency_ms
+                            ),
+                            "document_embedding_latency_ms": document_embedding_latency_ms,
+                            "query_embedding_latency_ms": query_embedding_latency_ms[
+                                query.query_id
+                            ],
+                            "ranking_latency_ms": ranking_latency_ms,
+                            "estimated_input_tokens": estimated_input_tokens,
+                            "estimated_embedding_cost_usd": estimated_cost_usd,
                         }
                     )
     return rows
