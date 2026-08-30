@@ -81,6 +81,7 @@ class TranscriptIngestionService:
             raise IngestionError("Transcript upload could not be saved") from exception
 
         transcript_id: str | None = None
+        indexed_memory_ids: list[str] = []
         try:
             loaded = TranscriptLoader(
                 self._transcript_root,
@@ -109,17 +110,17 @@ class TranscriptIngestionService:
                     )
                 )
             try:
-                index_results = [
-                    self._vector_index.index_memory(memory.memory_id)
-                    for memory in memories
-                ]
+                index_results = []
+                for memory in memories:
+                    index_results.append(self._vector_index.index_memory(memory.memory_id))
+                    indexed_memory_ids.append(memory.memory_id)
             except Exception as exception:
                 raise IngestionError("Memory index update failed") from exception
         except TranscriptLoadError as exception:
-            self._cleanup_failed_upload(target, transcript_id)
+            self._cleanup_failed_upload(target, transcript_id, indexed_memory_ids)
             raise InvalidUploadError("TXT upload could not be processed") from exception
         except Exception as exception:
-            self._cleanup_failed_upload(target, transcript_id)
+            self._cleanup_failed_upload(target, transcript_id, indexed_memory_ids)
             if isinstance(exception, IngestionError):
                 raise
             raise IngestionError("Transcript upload could not be completed") from exception
@@ -136,7 +137,25 @@ class TranscriptIngestionService:
             memory_ids=[memory.memory_id for memory in memories],
         )
 
-    def _cleanup_failed_upload(self, target: Path, transcript_id: str | None) -> None:
+    def _cleanup_failed_upload(
+        self,
+        target: Path,
+        transcript_id: str | None,
+        indexed_memory_ids: list[str],
+    ) -> None:
+        """Undo everything a failed ingest may have done, including Chroma.
+
+        ``index_memory`` writes vectors one memory at a time, so a failure
+        partway through the loop leaves earlier vectors committed to Chroma.
+        Once ``delete_transcript`` hard-deletes the SQLite rows there is no
+        way to rediscover those memory_ids from the database, so the caller
+        must hand back exactly the ids it already indexed before cleanup runs.
+        """
+        for memory_id in indexed_memory_ids:
+            try:
+                self._vector_index.delete_memory(memory_id)
+            except Exception:
+                pass
         if transcript_id is not None:
             self._repository.delete_transcript(transcript_id)
         try:
