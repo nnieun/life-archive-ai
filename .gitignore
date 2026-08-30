@@ -48,3 +48,5 @@ data/indexes/bm25/*
 # Test reports generated locally
 reports/pytest-results.txt
 reports/pytest-results.xml
+reports/real_retrieval_results.csv
+reports/real_evaluation_manifest.json
