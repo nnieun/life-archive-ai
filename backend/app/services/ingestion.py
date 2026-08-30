@@ -191,11 +191,11 @@ class TranscriptIngestionService:
             or Path(stripped_name).name != stripped_name
             or "/" in stripped_name
             or "\\" in stripped_name
-            or Path(stripped_name).suffix.casefold() != ".txt"
+            or Path(stripped_name).suffix.casefold() not in {".txt", ".pdf"}
         ):
-            raise InvalidUploadError("Upload must be a plain TXT filename")
+            raise InvalidUploadError("Upload must be a plain TXT or PDF filename")
         if not content:
-            raise InvalidUploadError("TXT upload must not be empty")
+            raise InvalidUploadError("Upload must not be empty")
         try:
             decoded = content.decode(
                 "utf-8-sig" if content.startswith(b"\xef\xbb\xbf") else "utf-8"
