@@ -1,385 +1,385 @@
 ﻿dataset_id,query_id,chunk_strategy,search_method,top_k,answer,cited_memory_ids,citation_correctness,unsupported_answer,end_to_end_latency_ms
-synthetic-life-memories-v1,q_school_graduation,256,dense,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.4943
-synthetic-life-memories-v1,q_school_graduation,256,dense,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.4931
-synthetic-life-memories-v1,q_school_graduation,256,dense,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.4926
-synthetic-life-memories-v1,q_first_work,256,dense,3,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,0.3563
-synthetic-life-memories-v1,q_first_work,256,dense,5,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,0.3560
-synthetic-life-memories-v1,q_first_work,256,dense,10,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,0.3559
-synthetic-life-memories-v1,q_seaside,256,dense,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.3386
-synthetic-life-memories-v1,q_seaside,256,dense,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.3384
-synthetic-life-memories-v1,q_seaside,256,dense,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.3385
-synthetic-life-memories-v1,q_relocation,256,dense,3,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.3279
-synthetic-life-memories-v1,q_relocation,256,dense,5,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.3278
-synthetic-life-memories-v1,q_relocation,256,dense,10,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.3278
-synthetic-life-memories-v1,q_library,256,dense,3,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.3311
-synthetic-life-memories-v1,q_library,256,dense,5,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.3309
-synthetic-life-memories-v1,q_library,256,dense,10,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.3309
-synthetic-life-memories-v1,q_programming,256,dense,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,0.3492
-synthetic-life-memories-v1,q_programming,256,dense,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,0.3490
-synthetic-life-memories-v1,q_programming,256,dense,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,0.3490
-synthetic-life-memories-v1,q_gardening,256,dense,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.3341
-synthetic-life-memories-v1,q_gardening,256,dense,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.3340
-synthetic-life-memories-v1,q_gardening,256,dense,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.3339
-synthetic-life-memories-v1,q_running,256,dense,3,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.3165
-synthetic-life-memories-v1,q_running,256,dense,5,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.3164
-synthetic-life-memories-v1,q_running,256,dense,10,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.3164
-synthetic-life-memories-v1,q_school_graduation,256,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,1.8187
-synthetic-life-memories-v1,q_school_graduation,256,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,1.8185
-synthetic-life-memories-v1,q_school_graduation,256,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,1.8185
-synthetic-life-memories-v1,q_first_work,256,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,1.8038
-synthetic-life-memories-v1,q_first_work,256,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,1.8036
-synthetic-life-memories-v1,q_first_work,256,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,1.8036
-synthetic-life-memories-v1,q_seaside,256,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,1.8184
-synthetic-life-memories-v1,q_seaside,256,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,1.8183
-synthetic-life-memories-v1,q_seaside,256,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,1.8182
-synthetic-life-memories-v1,q_relocation,256,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,1.8508
-synthetic-life-memories-v1,q_relocation,256,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,1.8506
-synthetic-life-memories-v1,q_relocation,256,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,1.8506
-synthetic-life-memories-v1,q_library,256,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,1.8520
-synthetic-life-memories-v1,q_library,256,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,1.8519
-synthetic-life-memories-v1,q_library,256,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,1.8519
-synthetic-life-memories-v1,q_programming,256,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,1.8527
-synthetic-life-memories-v1,q_programming,256,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,1.8526
-synthetic-life-memories-v1,q_programming,256,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,1.8526
-synthetic-life-memories-v1,q_gardening,256,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,1.8802
-synthetic-life-memories-v1,q_gardening,256,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,1.8801
-synthetic-life-memories-v1,q_gardening,256,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,1.8800
-synthetic-life-memories-v1,q_running,256,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,1.8629
-synthetic-life-memories-v1,q_running,256,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,1.8626
-synthetic-life-memories-v1,q_running,256,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,1.8626
-synthetic-life-memories-v1,q_school_graduation,256,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.7318
-synthetic-life-memories-v1,q_school_graduation,256,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.7316
-synthetic-life-memories-v1,q_school_graduation,256,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.7316
-synthetic-life-memories-v1,q_first_work,256,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,0.5715
-synthetic-life-memories-v1,q_first_work,256,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,0.5713
-synthetic-life-memories-v1,q_first_work,256,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,0.5713
-synthetic-life-memories-v1,q_seaside,256,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.5601
-synthetic-life-memories-v1,q_seaside,256,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.5600
-synthetic-life-memories-v1,q_seaside,256,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.5600
-synthetic-life-memories-v1,q_relocation,256,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.5701
-synthetic-life-memories-v1,q_relocation,256,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.5700
-synthetic-life-memories-v1,q_relocation,256,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.5700
-synthetic-life-memories-v1,q_library,256,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.5570
-synthetic-life-memories-v1,q_library,256,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.5569
-synthetic-life-memories-v1,q_library,256,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.5569
-synthetic-life-memories-v1,q_programming,256,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.5702
-synthetic-life-memories-v1,q_programming,256,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.5702
-synthetic-life-memories-v1,q_programming,256,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.5702
-synthetic-life-memories-v1,q_gardening,256,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.5737
-synthetic-life-memories-v1,q_gardening,256,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.5738
-synthetic-life-memories-v1,q_gardening,256,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.5737
-synthetic-life-memories-v1,q_running,256,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.5506
-synthetic-life-memories-v1,q_running,256,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.5506
-synthetic-life-memories-v1,q_running,256,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.5505
-synthetic-life-memories-v1,q_school_graduation,256,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.9512
-synthetic-life-memories-v1,q_school_graduation,256,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.9510
-synthetic-life-memories-v1,q_school_graduation,256,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.9510
-synthetic-life-memories-v1,q_first_work,256,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,0.9035
-synthetic-life-memories-v1,q_first_work,256,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,0.9034
-synthetic-life-memories-v1,q_first_work,256,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,0.9033
-synthetic-life-memories-v1,q_seaside,256,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.9001
-synthetic-life-memories-v1,q_seaside,256,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.8999
-synthetic-life-memories-v1,q_seaside,256,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.8999
-synthetic-life-memories-v1,q_relocation,256,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.9228
-synthetic-life-memories-v1,q_relocation,256,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.9226
-synthetic-life-memories-v1,q_relocation,256,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.9227
-synthetic-life-memories-v1,q_library,256,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.8963
-synthetic-life-memories-v1,q_library,256,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.8961
-synthetic-life-memories-v1,q_library,256,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.8961
-synthetic-life-memories-v1,q_programming,256,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.9040
-synthetic-life-memories-v1,q_programming,256,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.9038
-synthetic-life-memories-v1,q_programming,256,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.9038
-synthetic-life-memories-v1,q_gardening,256,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.9170
-synthetic-life-memories-v1,q_gardening,256,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.9169
-synthetic-life-memories-v1,q_gardening,256,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.9168
-synthetic-life-memories-v1,q_running,256,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.8953
-synthetic-life-memories-v1,q_running,256,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.8951
-synthetic-life-memories-v1,q_running,256,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.8951
-synthetic-life-memories-v1,q_school_graduation,512,dense,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.3356
-synthetic-life-memories-v1,q_school_graduation,512,dense,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.3355
-synthetic-life-memories-v1,q_school_graduation,512,dense,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.3355
-synthetic-life-memories-v1,q_first_work,512,dense,3,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,0.3163
-synthetic-life-memories-v1,q_first_work,512,dense,5,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,0.3163
-synthetic-life-memories-v1,q_first_work,512,dense,10,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,0.3162
-synthetic-life-memories-v1,q_seaside,512,dense,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.3052
-synthetic-life-memories-v1,q_seaside,512,dense,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.3052
-synthetic-life-memories-v1,q_seaside,512,dense,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.3051
-synthetic-life-memories-v1,q_relocation,512,dense,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.3015
-synthetic-life-memories-v1,q_relocation,512,dense,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.3014
-synthetic-life-memories-v1,q_relocation,512,dense,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.3014
-synthetic-life-memories-v1,q_library,512,dense,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.2989
-synthetic-life-memories-v1,q_library,512,dense,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.2989
-synthetic-life-memories-v1,q_library,512,dense,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.2988
-synthetic-life-memories-v1,q_programming,512,dense,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.3006
-synthetic-life-memories-v1,q_programming,512,dense,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.3006
-synthetic-life-memories-v1,q_programming,512,dense,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.3006
-synthetic-life-memories-v1,q_gardening,512,dense,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.2994
-synthetic-life-memories-v1,q_gardening,512,dense,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.2993
-synthetic-life-memories-v1,q_gardening,512,dense,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.2993
-synthetic-life-memories-v1,q_running,512,dense,3,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.3009
-synthetic-life-memories-v1,q_running,512,dense,5,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.3008
-synthetic-life-memories-v1,q_running,512,dense,10,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.3008
-synthetic-life-memories-v1,q_school_graduation,512,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.8106
-synthetic-life-memories-v1,q_school_graduation,512,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.8106
-synthetic-life-memories-v1,q_school_graduation,512,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.8105
-synthetic-life-memories-v1,q_first_work,512,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,0.7756
-synthetic-life-memories-v1,q_first_work,512,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,0.7756
-synthetic-life-memories-v1,q_first_work,512,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,0.7755
-synthetic-life-memories-v1,q_seaside,512,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.7778
-synthetic-life-memories-v1,q_seaside,512,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.7774
-synthetic-life-memories-v1,q_seaside,512,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.7774
-synthetic-life-memories-v1,q_relocation,512,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.7671
-synthetic-life-memories-v1,q_relocation,512,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.7670
-synthetic-life-memories-v1,q_relocation,512,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.7671
-synthetic-life-memories-v1,q_library,512,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7673
-synthetic-life-memories-v1,q_library,512,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7672
-synthetic-life-memories-v1,q_library,512,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7672
-synthetic-life-memories-v1,q_programming,512,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.0586
-synthetic-life-memories-v1,q_programming,512,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.0584
-synthetic-life-memories-v1,q_programming,512,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.0584
-synthetic-life-memories-v1,q_gardening,512,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.8055
-synthetic-life-memories-v1,q_gardening,512,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.8054
-synthetic-life-memories-v1,q_gardening,512,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.8053
-synthetic-life-memories-v1,q_running,512,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.7661
-synthetic-life-memories-v1,q_running,512,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.7660
-synthetic-life-memories-v1,q_running,512,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.7659
-synthetic-life-memories-v1,q_school_graduation,512,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.6307
-synthetic-life-memories-v1,q_school_graduation,512,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.6304
-synthetic-life-memories-v1,q_school_graduation,512,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.6304
-synthetic-life-memories-v1,q_first_work,512,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5467
-synthetic-life-memories-v1,q_first_work,512,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5466
-synthetic-life-memories-v1,q_first_work,512,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5466
-synthetic-life-memories-v1,q_seaside,512,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.5424
-synthetic-life-memories-v1,q_seaside,512,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.5423
-synthetic-life-memories-v1,q_seaside,512,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.5422
-synthetic-life-memories-v1,q_relocation,512,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.5464
-synthetic-life-memories-v1,q_relocation,512,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.5463
-synthetic-life-memories-v1,q_relocation,512,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.5463
-synthetic-life-memories-v1,q_library,512,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5422
-synthetic-life-memories-v1,q_library,512,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5420
-synthetic-life-memories-v1,q_library,512,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5422
-synthetic-life-memories-v1,q_programming,512,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5532
-synthetic-life-memories-v1,q_programming,512,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5531
-synthetic-life-memories-v1,q_programming,512,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5531
-synthetic-life-memories-v1,q_gardening,512,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.5600
-synthetic-life-memories-v1,q_gardening,512,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.5599
-synthetic-life-memories-v1,q_gardening,512,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.5599
-synthetic-life-memories-v1,q_running,512,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.5395
-synthetic-life-memories-v1,q_running,512,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.5394
-synthetic-life-memories-v1,q_running,512,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.5393
-synthetic-life-memories-v1,q_school_graduation,512,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.8750
-synthetic-life-memories-v1,q_school_graduation,512,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.8748
-synthetic-life-memories-v1,q_school_graduation,512,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.8748
-synthetic-life-memories-v1,q_first_work,512,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,0.9047
-synthetic-life-memories-v1,q_first_work,512,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,0.9045
-synthetic-life-memories-v1,q_first_work,512,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,0.9045
-synthetic-life-memories-v1,q_seaside,512,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.8515
-synthetic-life-memories-v1,q_seaside,512,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.8514
-synthetic-life-memories-v1,q_seaside,512,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.8513
-synthetic-life-memories-v1,q_relocation,512,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.8541
-synthetic-life-memories-v1,q_relocation,512,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.8540
-synthetic-life-memories-v1,q_relocation,512,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.8539
-synthetic-life-memories-v1,q_library,512,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.8500
-synthetic-life-memories-v1,q_library,512,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.8499
-synthetic-life-memories-v1,q_library,512,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.8499
-synthetic-life-memories-v1,q_programming,512,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.8536
-synthetic-life-memories-v1,q_programming,512,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.8535
-synthetic-life-memories-v1,q_programming,512,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.8535
-synthetic-life-memories-v1,q_gardening,512,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.8627
-synthetic-life-memories-v1,q_gardening,512,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.8626
-synthetic-life-memories-v1,q_gardening,512,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.8625
-synthetic-life-memories-v1,q_running,512,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.8424
-synthetic-life-memories-v1,q_running,512,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.8422
-synthetic-life-memories-v1,q_running,512,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.8422
-synthetic-life-memories-v1,q_school_graduation,1024,dense,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.2952
-synthetic-life-memories-v1,q_school_graduation,1024,dense,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.2950
-synthetic-life-memories-v1,q_school_graduation,1024,dense,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.2950
-synthetic-life-memories-v1,q_first_work,1024,dense,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.2845
-synthetic-life-memories-v1,q_first_work,1024,dense,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.2844
-synthetic-life-memories-v1,q_first_work,1024,dense,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.2844
-synthetic-life-memories-v1,q_seaside,1024,dense,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.2759
-synthetic-life-memories-v1,q_seaside,1024,dense,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.2758
-synthetic-life-memories-v1,q_seaside,1024,dense,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.2757
-synthetic-life-memories-v1,q_relocation,1024,dense,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.2786
-synthetic-life-memories-v1,q_relocation,1024,dense,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.2786
-synthetic-life-memories-v1,q_relocation,1024,dense,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.2786
-synthetic-life-memories-v1,q_library,1024,dense,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.2696
-synthetic-life-memories-v1,q_library,1024,dense,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.2695
-synthetic-life-memories-v1,q_library,1024,dense,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.2696
-synthetic-life-memories-v1,q_programming,1024,dense,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.2692
-synthetic-life-memories-v1,q_programming,1024,dense,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.2691
-synthetic-life-memories-v1,q_programming,1024,dense,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.2691
-synthetic-life-memories-v1,q_gardening,1024,dense,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.2677
-synthetic-life-memories-v1,q_gardening,1024,dense,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.2677
-synthetic-life-memories-v1,q_gardening,1024,dense,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.2676
-synthetic-life-memories-v1,q_running,1024,dense,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.2659
-synthetic-life-memories-v1,q_running,1024,dense,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.2659
-synthetic-life-memories-v1,q_running,1024,dense,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.2659
-synthetic-life-memories-v1,q_school_graduation,1024,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.3745
-synthetic-life-memories-v1,q_school_graduation,1024,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.3744
-synthetic-life-memories-v1,q_school_graduation,1024,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.3744
-synthetic-life-memories-v1,q_first_work,1024,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.3626
-synthetic-life-memories-v1,q_first_work,1024,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.3625
-synthetic-life-memories-v1,q_first_work,1024,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.3625
-synthetic-life-memories-v1,q_seaside,1024,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.3525
-synthetic-life-memories-v1,q_seaside,1024,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.3525
-synthetic-life-memories-v1,q_seaside,1024,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.3525
-synthetic-life-memories-v1,q_relocation,1024,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.3507
-synthetic-life-memories-v1,q_relocation,1024,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.3507
-synthetic-life-memories-v1,q_relocation,1024,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.3507
-synthetic-life-memories-v1,q_library,1024,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.3567
-synthetic-life-memories-v1,q_library,1024,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.3567
-synthetic-life-memories-v1,q_library,1024,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.3568
-synthetic-life-memories-v1,q_programming,1024,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.3522
-synthetic-life-memories-v1,q_programming,1024,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.3522
-synthetic-life-memories-v1,q_programming,1024,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.3521
-synthetic-life-memories-v1,q_gardening,1024,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.3558
-synthetic-life-memories-v1,q_gardening,1024,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.3558
-synthetic-life-memories-v1,q_gardening,1024,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.3557
-synthetic-life-memories-v1,q_running,1024,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.3573
-synthetic-life-memories-v1,q_running,1024,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.3573
-synthetic-life-memories-v1,q_running,1024,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.3582
-synthetic-life-memories-v1,q_school_graduation,1024,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.5681
-synthetic-life-memories-v1,q_school_graduation,1024,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.5680
-synthetic-life-memories-v1,q_school_graduation,1024,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.5680
-synthetic-life-memories-v1,q_first_work,1024,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5124
-synthetic-life-memories-v1,q_first_work,1024,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5124
-synthetic-life-memories-v1,q_first_work,1024,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5124
-synthetic-life-memories-v1,q_seaside,1024,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.5577
-synthetic-life-memories-v1,q_seaside,1024,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.5576
-synthetic-life-memories-v1,q_seaside,1024,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.5576
-synthetic-life-memories-v1,q_relocation,1024,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.5291
-synthetic-life-memories-v1,q_relocation,1024,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.5291
-synthetic-life-memories-v1,q_relocation,1024,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.5290
-synthetic-life-memories-v1,q_library,1024,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5156
-synthetic-life-memories-v1,q_library,1024,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5155
-synthetic-life-memories-v1,q_library,1024,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5155
-synthetic-life-memories-v1,q_programming,1024,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5321
-synthetic-life-memories-v1,q_programming,1024,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5320
-synthetic-life-memories-v1,q_programming,1024,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5320
-synthetic-life-memories-v1,q_gardening,1024,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.5315
-synthetic-life-memories-v1,q_gardening,1024,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.5315
-synthetic-life-memories-v1,q_gardening,1024,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.5315
-synthetic-life-memories-v1,q_running,1024,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5143
-synthetic-life-memories-v1,q_running,1024,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5143
-synthetic-life-memories-v1,q_running,1024,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5143
-synthetic-life-memories-v1,q_school_graduation,1024,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.8242
-synthetic-life-memories-v1,q_school_graduation,1024,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.8242
-synthetic-life-memories-v1,q_school_graduation,1024,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.8242
-synthetic-life-memories-v1,q_first_work,1024,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7850
-synthetic-life-memories-v1,q_first_work,1024,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7849
-synthetic-life-memories-v1,q_first_work,1024,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7849
-synthetic-life-memories-v1,q_seaside,1024,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.7857
-synthetic-life-memories-v1,q_seaside,1024,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.7857
-synthetic-life-memories-v1,q_seaside,1024,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.7856
-synthetic-life-memories-v1,q_relocation,1024,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.7960
-synthetic-life-memories-v1,q_relocation,1024,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.7959
-synthetic-life-memories-v1,q_relocation,1024,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.7959
-synthetic-life-memories-v1,q_library,1024,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7909
-synthetic-life-memories-v1,q_library,1024,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7908
-synthetic-life-memories-v1,q_library,1024,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7907
-synthetic-life-memories-v1,q_programming,1024,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.8273
-synthetic-life-memories-v1,q_programming,1024,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.8273
-synthetic-life-memories-v1,q_programming,1024,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.8272
-synthetic-life-memories-v1,q_gardening,1024,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.8097
-synthetic-life-memories-v1,q_gardening,1024,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.8096
-synthetic-life-memories-v1,q_gardening,1024,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.8096
-synthetic-life-memories-v1,q_running,1024,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7932
-synthetic-life-memories-v1,q_running,1024,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7931
-synthetic-life-memories-v1,q_running,1024,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7931
-synthetic-life-memories-v1,q_school_graduation,event_aware,dense,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.3853
-synthetic-life-memories-v1,q_school_graduation,event_aware,dense,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.3852
-synthetic-life-memories-v1,q_school_graduation,event_aware,dense,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.3853
-synthetic-life-memories-v1,q_first_work,event_aware,dense,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.3530
-synthetic-life-memories-v1,q_first_work,event_aware,dense,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.3529
-synthetic-life-memories-v1,q_first_work,event_aware,dense,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.3529
-synthetic-life-memories-v1,q_seaside,event_aware,dense,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.3455
-synthetic-life-memories-v1,q_seaside,event_aware,dense,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.3455
-synthetic-life-memories-v1,q_seaside,event_aware,dense,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.3454
-synthetic-life-memories-v1,q_relocation,event_aware,dense,3,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.3424
-synthetic-life-memories-v1,q_relocation,event_aware,dense,5,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.3423
-synthetic-life-memories-v1,q_relocation,event_aware,dense,10,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.3424
-synthetic-life-memories-v1,q_library,event_aware,dense,3,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.3322
-synthetic-life-memories-v1,q_library,event_aware,dense,5,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.3322
-synthetic-life-memories-v1,q_library,event_aware,dense,10,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.3322
-synthetic-life-memories-v1,q_programming,event_aware,dense,3,검색된 합성 기억을 근거로 답변했습니다.,eval_online_course,1.0000,0,0.3312
-synthetic-life-memories-v1,q_programming,event_aware,dense,5,검색된 합성 기억을 근거로 답변했습니다.,eval_online_course,1.0000,0,0.3311
-synthetic-life-memories-v1,q_programming,event_aware,dense,10,검색된 합성 기억을 근거로 답변했습니다.,eval_online_course,1.0000,0,0.3310
-synthetic-life-memories-v1,q_gardening,event_aware,dense,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.3289
-synthetic-life-memories-v1,q_gardening,event_aware,dense,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.3288
-synthetic-life-memories-v1,q_gardening,event_aware,dense,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.3289
-synthetic-life-memories-v1,q_running,event_aware,dense,3,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.3248
-synthetic-life-memories-v1,q_running,event_aware,dense,5,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.3247
-synthetic-life-memories-v1,q_running,event_aware,dense,10,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.3247
-synthetic-life-memories-v1,q_school_graduation,event_aware,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,4.6984
-synthetic-life-memories-v1,q_school_graduation,event_aware,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,4.6982
-synthetic-life-memories-v1,q_school_graduation,event_aware,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,4.6982
-synthetic-life-memories-v1,q_first_work,event_aware,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,4.9057
-synthetic-life-memories-v1,q_first_work,event_aware,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,4.9048
-synthetic-life-memories-v1,q_first_work,event_aware,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,4.9048
-synthetic-life-memories-v1,q_seaside,event_aware,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,5.2826
-synthetic-life-memories-v1,q_seaside,event_aware,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,5.2814
-synthetic-life-memories-v1,q_seaside,event_aware,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,5.2813
-synthetic-life-memories-v1,q_relocation,event_aware,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,4.6491
-synthetic-life-memories-v1,q_relocation,event_aware,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,4.6488
-synthetic-life-memories-v1,q_relocation,event_aware,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,4.6488
-synthetic-life-memories-v1,q_library,event_aware,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,4.6310
-synthetic-life-memories-v1,q_library,event_aware,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,4.6307
-synthetic-life-memories-v1,q_library,event_aware,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,4.6307
-synthetic-life-memories-v1,q_programming,event_aware,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_online_course,1.0000,0,4.6148
-synthetic-life-memories-v1,q_programming,event_aware,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_online_course,1.0000,0,4.6148
-synthetic-life-memories-v1,q_programming,event_aware,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_online_course,1.0000,0,4.6147
-synthetic-life-memories-v1,q_gardening,event_aware,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,4.6533
-synthetic-life-memories-v1,q_gardening,event_aware,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,4.6531
-synthetic-life-memories-v1,q_gardening,event_aware,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,4.6531
-synthetic-life-memories-v1,q_running,event_aware,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,4.6008
-synthetic-life-memories-v1,q_running,event_aware,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,4.6005
-synthetic-life-memories-v1,q_running,event_aware,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,4.6005
-synthetic-life-memories-v1,q_school_graduation,event_aware,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.6614
-synthetic-life-memories-v1,q_school_graduation,event_aware,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.6612
-synthetic-life-memories-v1,q_school_graduation,event_aware,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.6612
-synthetic-life-memories-v1,q_first_work,event_aware,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,0.5460
-synthetic-life-memories-v1,q_first_work,event_aware,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,0.5458
-synthetic-life-memories-v1,q_first_work,event_aware,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,0.5458
-synthetic-life-memories-v1,q_seaside,event_aware,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.5367
-synthetic-life-memories-v1,q_seaside,event_aware,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.5366
-synthetic-life-memories-v1,q_seaside,event_aware,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.5366
-synthetic-life-memories-v1,q_relocation,event_aware,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.5421
-synthetic-life-memories-v1,q_relocation,event_aware,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.5419
-synthetic-life-memories-v1,q_relocation,event_aware,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.5420
-synthetic-life-memories-v1,q_library,event_aware,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.5337
-synthetic-life-memories-v1,q_library,event_aware,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.5335
-synthetic-life-memories-v1,q_library,event_aware,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.5335
-synthetic-life-memories-v1,q_programming,event_aware,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_online_course,1.0000,0,0.5423
-synthetic-life-memories-v1,q_programming,event_aware,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_online_course,1.0000,0,0.5423
-synthetic-life-memories-v1,q_programming,event_aware,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_online_course,1.0000,0,0.5422
-synthetic-life-memories-v1,q_gardening,event_aware,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.5459
-synthetic-life-memories-v1,q_gardening,event_aware,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.5457
-synthetic-life-memories-v1,q_gardening,event_aware,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.5458
-synthetic-life-memories-v1,q_running,event_aware,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.5232
-synthetic-life-memories-v1,q_running,event_aware,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.5231
-synthetic-life-memories-v1,q_running,event_aware,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.5231
-synthetic-life-memories-v1,q_school_graduation,event_aware,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.9108
-synthetic-life-memories-v1,q_school_graduation,event_aware,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.9105
-synthetic-life-memories-v1,q_school_graduation,event_aware,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.9105
-synthetic-life-memories-v1,q_first_work,event_aware,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.8850
-synthetic-life-memories-v1,q_first_work,event_aware,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.8850
-synthetic-life-memories-v1,q_first_work,event_aware,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.8849
-synthetic-life-memories-v1,q_seaside,event_aware,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.8792
-synthetic-life-memories-v1,q_seaside,event_aware,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.8791
-synthetic-life-memories-v1,q_seaside,event_aware,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.8791
-synthetic-life-memories-v1,q_relocation,event_aware,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.8852
-synthetic-life-memories-v1,q_relocation,event_aware,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.8851
-synthetic-life-memories-v1,q_relocation,event_aware,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.8851
-synthetic-life-memories-v1,q_library,event_aware,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.8660
-synthetic-life-memories-v1,q_library,event_aware,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.8660
-synthetic-life-memories-v1,q_library,event_aware,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.8659
-synthetic-life-memories-v1,q_programming,event_aware,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_online_course,1.0000,0,0.8819
-synthetic-life-memories-v1,q_programming,event_aware,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_online_course,1.0000,0,0.8817
-synthetic-life-memories-v1,q_programming,event_aware,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_online_course,1.0000,0,0.8818
-synthetic-life-memories-v1,q_gardening,event_aware,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.8816
-synthetic-life-memories-v1,q_gardening,event_aware,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.8815
-synthetic-life-memories-v1,q_gardening,event_aware,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.8815
-synthetic-life-memories-v1,q_running,event_aware,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.8594
-synthetic-life-memories-v1,q_running,event_aware,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.8593
-synthetic-life-memories-v1,q_running,event_aware,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.8592
+synthetic-life-memories-v1,q_school_graduation,256,alias,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,1.6926
+synthetic-life-memories-v1,q_school_graduation,256,alias,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,1.6919
+synthetic-life-memories-v1,q_school_graduation,256,alias,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,1.6900
+synthetic-life-memories-v1,q_first_work,256,alias,3,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,1.0513
+synthetic-life-memories-v1,q_first_work,256,alias,5,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,1.0504
+synthetic-life-memories-v1,q_first_work,256,alias,10,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,1.0503
+synthetic-life-memories-v1,q_seaside,256,alias,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.8753
+synthetic-life-memories-v1,q_seaside,256,alias,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.8749
+synthetic-life-memories-v1,q_seaside,256,alias,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.8750
+synthetic-life-memories-v1,q_relocation,256,alias,3,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.6805
+synthetic-life-memories-v1,q_relocation,256,alias,5,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.6803
+synthetic-life-memories-v1,q_relocation,256,alias,10,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.6803
+synthetic-life-memories-v1,q_library,256,alias,3,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.5513
+synthetic-life-memories-v1,q_library,256,alias,5,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.5511
+synthetic-life-memories-v1,q_library,256,alias,10,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.5510
+synthetic-life-memories-v1,q_programming,256,alias,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,0.5058
+synthetic-life-memories-v1,q_programming,256,alias,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,0.5056
+synthetic-life-memories-v1,q_programming,256,alias,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,0.5056
+synthetic-life-memories-v1,q_gardening,256,alias,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.4869
+synthetic-life-memories-v1,q_gardening,256,alias,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.4867
+synthetic-life-memories-v1,q_gardening,256,alias,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.4867
+synthetic-life-memories-v1,q_running,256,alias,3,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.5087
+synthetic-life-memories-v1,q_running,256,alias,5,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.5085
+synthetic-life-memories-v1,q_running,256,alias,10,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.5085
+synthetic-life-memories-v1,q_school_graduation,256,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,2.6462
+synthetic-life-memories-v1,q_school_graduation,256,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,2.6459
+synthetic-life-memories-v1,q_school_graduation,256,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,2.6459
+synthetic-life-memories-v1,q_first_work,256,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,2.5870
+synthetic-life-memories-v1,q_first_work,256,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,2.5868
+synthetic-life-memories-v1,q_first_work,256,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,2.5867
+synthetic-life-memories-v1,q_seaside,256,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,3.1095
+synthetic-life-memories-v1,q_seaside,256,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,3.1088
+synthetic-life-memories-v1,q_seaside,256,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,3.1087
+synthetic-life-memories-v1,q_relocation,256,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,2.5517
+synthetic-life-memories-v1,q_relocation,256,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,2.5514
+synthetic-life-memories-v1,q_relocation,256,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,2.5513
+synthetic-life-memories-v1,q_library,256,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,2.5261
+synthetic-life-memories-v1,q_library,256,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,2.5258
+synthetic-life-memories-v1,q_library,256,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,2.5258
+synthetic-life-memories-v1,q_programming,256,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,2.5007
+synthetic-life-memories-v1,q_programming,256,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,2.5004
+synthetic-life-memories-v1,q_programming,256,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,2.5004
+synthetic-life-memories-v1,q_gardening,256,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,2.5667
+synthetic-life-memories-v1,q_gardening,256,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,2.5664
+synthetic-life-memories-v1,q_gardening,256,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,2.5663
+synthetic-life-memories-v1,q_running,256,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,2.4889
+synthetic-life-memories-v1,q_running,256,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,2.4886
+synthetic-life-memories-v1,q_running,256,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,2.4886
+synthetic-life-memories-v1,q_school_graduation,256,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,1.1111
+synthetic-life-memories-v1,q_school_graduation,256,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,1.1107
+synthetic-life-memories-v1,q_school_graduation,256,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,1.1106
+synthetic-life-memories-v1,q_first_work,256,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,0.9610
+synthetic-life-memories-v1,q_first_work,256,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,0.9608
+synthetic-life-memories-v1,q_first_work,256,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,0.9607
+synthetic-life-memories-v1,q_seaside,256,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.8271
+synthetic-life-memories-v1,q_seaside,256,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.8267
+synthetic-life-memories-v1,q_seaside,256,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.8267
+synthetic-life-memories-v1,q_relocation,256,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.8194
+synthetic-life-memories-v1,q_relocation,256,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.8193
+synthetic-life-memories-v1,q_relocation,256,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.8192
+synthetic-life-memories-v1,q_library,256,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.8122
+synthetic-life-memories-v1,q_library,256,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.8121
+synthetic-life-memories-v1,q_library,256,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.8121
+synthetic-life-memories-v1,q_programming,256,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.8192
+synthetic-life-memories-v1,q_programming,256,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.8190
+synthetic-life-memories-v1,q_programming,256,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.8190
+synthetic-life-memories-v1,q_gardening,256,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.8423
+synthetic-life-memories-v1,q_gardening,256,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.8421
+synthetic-life-memories-v1,q_gardening,256,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.8421
+synthetic-life-memories-v1,q_running,256,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.7875
+synthetic-life-memories-v1,q_running,256,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.7874
+synthetic-life-memories-v1,q_running,256,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.7873
+synthetic-life-memories-v1,q_school_graduation,256,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,1.3665
+synthetic-life-memories-v1,q_school_graduation,256,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,1.3661
+synthetic-life-memories-v1,q_school_graduation,256,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,1.3661
+synthetic-life-memories-v1,q_first_work,256,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,1.5916
+synthetic-life-memories-v1,q_first_work,256,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,1.5913
+synthetic-life-memories-v1,q_first_work,256,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,1.5912
+synthetic-life-memories-v1,q_seaside,256,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,1.3654
+synthetic-life-memories-v1,q_seaside,256,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,1.3651
+synthetic-life-memories-v1,q_seaside,256,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,1.3651
+synthetic-life-memories-v1,q_relocation,256,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,1.3314
+synthetic-life-memories-v1,q_relocation,256,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,1.3311
+synthetic-life-memories-v1,q_relocation,256,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,1.3310
+synthetic-life-memories-v1,q_library,256,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,1.2985
+synthetic-life-memories-v1,q_library,256,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,1.2983
+synthetic-life-memories-v1,q_library,256,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,1.2982
+synthetic-life-memories-v1,q_programming,256,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,1.3330
+synthetic-life-memories-v1,q_programming,256,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,1.3327
+synthetic-life-memories-v1,q_programming,256,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,1.3327
+synthetic-life-memories-v1,q_gardening,256,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,1.4216
+synthetic-life-memories-v1,q_gardening,256,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,1.4208
+synthetic-life-memories-v1,q_gardening,256,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,1.4205
+synthetic-life-memories-v1,q_running,256,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,1.5555
+synthetic-life-memories-v1,q_running,256,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,1.5548
+synthetic-life-memories-v1,q_running,256,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,1.5546
+synthetic-life-memories-v1,q_school_graduation,512,alias,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.4981
+synthetic-life-memories-v1,q_school_graduation,512,alias,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.4977
+synthetic-life-memories-v1,q_school_graduation,512,alias,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.4977
+synthetic-life-memories-v1,q_first_work,512,alias,3,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,0.4752
+synthetic-life-memories-v1,q_first_work,512,alias,5,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,0.4750
+synthetic-life-memories-v1,q_first_work,512,alias,10,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,0.4749
+synthetic-life-memories-v1,q_seaside,512,alias,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.4515
+synthetic-life-memories-v1,q_seaside,512,alias,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.4514
+synthetic-life-memories-v1,q_seaside,512,alias,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.4513
+synthetic-life-memories-v1,q_relocation,512,alias,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.4643
+synthetic-life-memories-v1,q_relocation,512,alias,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.4642
+synthetic-life-memories-v1,q_relocation,512,alias,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.4642
+synthetic-life-memories-v1,q_library,512,alias,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.4331
+synthetic-life-memories-v1,q_library,512,alias,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.4330
+synthetic-life-memories-v1,q_library,512,alias,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.4329
+synthetic-life-memories-v1,q_programming,512,alias,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.4493
+synthetic-life-memories-v1,q_programming,512,alias,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.4492
+synthetic-life-memories-v1,q_programming,512,alias,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.4493
+synthetic-life-memories-v1,q_gardening,512,alias,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.4290
+synthetic-life-memories-v1,q_gardening,512,alias,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.4288
+synthetic-life-memories-v1,q_gardening,512,alias,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.4287
+synthetic-life-memories-v1,q_running,512,alias,3,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.4398
+synthetic-life-memories-v1,q_running,512,alias,5,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.4396
+synthetic-life-memories-v1,q_running,512,alias,10,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.4396
+synthetic-life-memories-v1,q_school_graduation,512,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,1.0907
+synthetic-life-memories-v1,q_school_graduation,512,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,1.0904
+synthetic-life-memories-v1,q_school_graduation,512,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,1.0904
+synthetic-life-memories-v1,q_first_work,512,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,1.0643
+synthetic-life-memories-v1,q_first_work,512,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,1.0641
+synthetic-life-memories-v1,q_first_work,512,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,1.0641
+synthetic-life-memories-v1,q_seaside,512,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,1.0643
+synthetic-life-memories-v1,q_seaside,512,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,1.0642
+synthetic-life-memories-v1,q_seaside,512,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,1.0642
+synthetic-life-memories-v1,q_relocation,512,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,1.0646
+synthetic-life-memories-v1,q_relocation,512,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,1.0645
+synthetic-life-memories-v1,q_relocation,512,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,1.0646
+synthetic-life-memories-v1,q_library,512,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.0581
+synthetic-life-memories-v1,q_library,512,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.0581
+synthetic-life-memories-v1,q_library,512,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.0580
+synthetic-life-memories-v1,q_programming,512,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.0395
+synthetic-life-memories-v1,q_programming,512,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.0394
+synthetic-life-memories-v1,q_programming,512,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.0393
+synthetic-life-memories-v1,q_gardening,512,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,1.0588
+synthetic-life-memories-v1,q_gardening,512,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,1.0587
+synthetic-life-memories-v1,q_gardening,512,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,1.0587
+synthetic-life-memories-v1,q_running,512,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,1.0505
+synthetic-life-memories-v1,q_running,512,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,1.0504
+synthetic-life-memories-v1,q_running,512,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,1.0503
+synthetic-life-memories-v1,q_school_graduation,512,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.8189
+synthetic-life-memories-v1,q_school_graduation,512,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.8186
+synthetic-life-memories-v1,q_school_graduation,512,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,0.8187
+synthetic-life-memories-v1,q_first_work,512,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7898
+synthetic-life-memories-v1,q_first_work,512,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7897
+synthetic-life-memories-v1,q_first_work,512,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7896
+synthetic-life-memories-v1,q_seaside,512,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,1.6208
+synthetic-life-memories-v1,q_seaside,512,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,1.6202
+synthetic-life-memories-v1,q_seaside,512,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,1.6199
+synthetic-life-memories-v1,q_relocation,512,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,2.4146
+synthetic-life-memories-v1,q_relocation,512,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,2.4128
+synthetic-life-memories-v1,q_relocation,512,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,2.4124
+synthetic-life-memories-v1,q_library,512,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.4155
+synthetic-life-memories-v1,q_library,512,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.4149
+synthetic-life-memories-v1,q_library,512,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.4149
+synthetic-life-memories-v1,q_programming,512,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.8395
+synthetic-life-memories-v1,q_programming,512,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.8394
+synthetic-life-memories-v1,q_programming,512,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.8394
+synthetic-life-memories-v1,q_gardening,512,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.8289
+synthetic-life-memories-v1,q_gardening,512,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.8288
+synthetic-life-memories-v1,q_gardening,512,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.8287
+synthetic-life-memories-v1,q_running,512,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.7667
+synthetic-life-memories-v1,q_running,512,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.7667
+synthetic-life-memories-v1,q_running,512,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.7665
+synthetic-life-memories-v1,q_school_graduation,512,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,1.3306
+synthetic-life-memories-v1,q_school_graduation,512,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,1.3302
+synthetic-life-memories-v1,q_school_graduation,512,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_first_job,0.0000,1,1.3302
+synthetic-life-memories-v1,q_first_work,512,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,1.2528
+synthetic-life-memories-v1,q_first_work,512,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,1.2526
+synthetic-life-memories-v1,q_first_work,512,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_first_job,1.0000,0,1.2526
+synthetic-life-memories-v1,q_seaside,512,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,1.5877
+synthetic-life-memories-v1,q_seaside,512,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,1.5869
+synthetic-life-memories-v1,q_seaside,512,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,1.5867
+synthetic-life-memories-v1,q_relocation,512,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,1.3541
+synthetic-life-memories-v1,q_relocation,512,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,1.3539
+synthetic-life-memories-v1,q_relocation,512,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,1.3538
+synthetic-life-memories-v1,q_library,512,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.2652
+synthetic-life-memories-v1,q_library,512,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.2650
+synthetic-life-memories-v1,q_library,512,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.2649
+synthetic-life-memories-v1,q_programming,512,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.2637
+synthetic-life-memories-v1,q_programming,512,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.2635
+synthetic-life-memories-v1,q_programming,512,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.2634
+synthetic-life-memories-v1,q_gardening,512,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,1.5070
+synthetic-life-memories-v1,q_gardening,512,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,1.5063
+synthetic-life-memories-v1,q_gardening,512,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,1.5062
+synthetic-life-memories-v1,q_running,512,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,1.4925
+synthetic-life-memories-v1,q_running,512,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,1.4918
+synthetic-life-memories-v1,q_running,512,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,1.4916
+synthetic-life-memories-v1,q_school_graduation,1024,alias,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.5495
+synthetic-life-memories-v1,q_school_graduation,1024,alias,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.5492
+synthetic-life-memories-v1,q_school_graduation,1024,alias,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.5491
+synthetic-life-memories-v1,q_first_work,1024,alias,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.4320
+synthetic-life-memories-v1,q_first_work,1024,alias,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.4319
+synthetic-life-memories-v1,q_first_work,1024,alias,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.4319
+synthetic-life-memories-v1,q_seaside,1024,alias,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.4184
+synthetic-life-memories-v1,q_seaside,1024,alias,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.4183
+synthetic-life-memories-v1,q_seaside,1024,alias,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.4183
+synthetic-life-memories-v1,q_relocation,1024,alias,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.3993
+synthetic-life-memories-v1,q_relocation,1024,alias,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.3992
+synthetic-life-memories-v1,q_relocation,1024,alias,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.3991
+synthetic-life-memories-v1,q_library,1024,alias,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.4036
+synthetic-life-memories-v1,q_library,1024,alias,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.4034
+synthetic-life-memories-v1,q_library,1024,alias,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.4034
+synthetic-life-memories-v1,q_programming,1024,alias,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.4087
+synthetic-life-memories-v1,q_programming,1024,alias,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.4087
+synthetic-life-memories-v1,q_programming,1024,alias,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.4086
+synthetic-life-memories-v1,q_gardening,1024,alias,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.3979
+synthetic-life-memories-v1,q_gardening,1024,alias,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.3978
+synthetic-life-memories-v1,q_gardening,1024,alias,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.3978
+synthetic-life-memories-v1,q_running,1024,alias,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.4069
+synthetic-life-memories-v1,q_running,1024,alias,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.4069
+synthetic-life-memories-v1,q_running,1024,alias,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.4068
+synthetic-life-memories-v1,q_school_graduation,1024,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.5151
+synthetic-life-memories-v1,q_school_graduation,1024,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.5150
+synthetic-life-memories-v1,q_school_graduation,1024,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.5150
+synthetic-life-memories-v1,q_first_work,1024,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5412
+synthetic-life-memories-v1,q_first_work,1024,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5411
+synthetic-life-memories-v1,q_first_work,1024,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5411
+synthetic-life-memories-v1,q_seaside,1024,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.5044
+synthetic-life-memories-v1,q_seaside,1024,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.5043
+synthetic-life-memories-v1,q_seaside,1024,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.5041
+synthetic-life-memories-v1,q_relocation,1024,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.5162
+synthetic-life-memories-v1,q_relocation,1024,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.5162
+synthetic-life-memories-v1,q_relocation,1024,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.5161
+synthetic-life-memories-v1,q_library,1024,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5755
+synthetic-life-memories-v1,q_library,1024,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5754
+synthetic-life-memories-v1,q_library,1024,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5755
+synthetic-life-memories-v1,q_programming,1024,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.5257
+synthetic-life-memories-v1,q_programming,1024,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.5257
+synthetic-life-memories-v1,q_programming,1024,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.5257
+synthetic-life-memories-v1,q_gardening,1024,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.5175
+synthetic-life-memories-v1,q_gardening,1024,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.5174
+synthetic-life-memories-v1,q_gardening,1024,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.5174
+synthetic-life-memories-v1,q_running,1024,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5246
+synthetic-life-memories-v1,q_running,1024,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5246
+synthetic-life-memories-v1,q_running,1024,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.5246
+synthetic-life-memories-v1,q_school_graduation,1024,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.8142
+synthetic-life-memories-v1,q_school_graduation,1024,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.8141
+synthetic-life-memories-v1,q_school_graduation,1024,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.8141
+synthetic-life-memories-v1,q_first_work,1024,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7607
+synthetic-life-memories-v1,q_first_work,1024,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7605
+synthetic-life-memories-v1,q_first_work,1024,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7606
+synthetic-life-memories-v1,q_seaside,1024,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.7400
+synthetic-life-memories-v1,q_seaside,1024,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.7399
+synthetic-life-memories-v1,q_seaside,1024,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.7399
+synthetic-life-memories-v1,q_relocation,1024,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.7627
+synthetic-life-memories-v1,q_relocation,1024,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.7626
+synthetic-life-memories-v1,q_relocation,1024,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,0.7625
+synthetic-life-memories-v1,q_library,1024,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7479
+synthetic-life-memories-v1,q_library,1024,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7479
+synthetic-life-memories-v1,q_library,1024,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7479
+synthetic-life-memories-v1,q_programming,1024,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7750
+synthetic-life-memories-v1,q_programming,1024,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7749
+synthetic-life-memories-v1,q_programming,1024,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7749
+synthetic-life-memories-v1,q_gardening,1024,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.8762
+synthetic-life-memories-v1,q_gardening,1024,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.8761
+synthetic-life-memories-v1,q_gardening,1024,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.8761
+synthetic-life-memories-v1,q_running,1024,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7500
+synthetic-life-memories-v1,q_running,1024,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7499
+synthetic-life-memories-v1,q_running,1024,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,0.7499
+synthetic-life-memories-v1,q_school_graduation,1024,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,1.7046
+synthetic-life-memories-v1,q_school_graduation,1024,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,1.7041
+synthetic-life-memories-v1,q_school_graduation,1024,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,1.7039
+synthetic-life-memories-v1,q_first_work,1024,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.2092
+synthetic-life-memories-v1,q_first_work,1024,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.2090
+synthetic-life-memories-v1,q_first_work,1024,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.2089
+synthetic-life-memories-v1,q_seaside,1024,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,1.1974
+synthetic-life-memories-v1,q_seaside,1024,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,1.1971
+synthetic-life-memories-v1,q_seaside,1024,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,1.1970
+synthetic-life-memories-v1,q_relocation,1024,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,1.1721
+synthetic-life-memories-v1,q_relocation,1024,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,1.1719
+synthetic-life-memories-v1,q_relocation,1024,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,1.1719
+synthetic-life-memories-v1,q_library,1024,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.1564
+synthetic-life-memories-v1,q_library,1024,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.1563
+synthetic-life-memories-v1,q_library,1024,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.1563
+synthetic-life-memories-v1,q_programming,1024,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,1.1812
+synthetic-life-memories-v1,q_programming,1024,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,1.1810
+synthetic-life-memories-v1,q_programming,1024,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_beach_trip,0.0000,1,1.1810
+synthetic-life-memories-v1,q_gardening,1024,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,1.1759
+synthetic-life-memories-v1,q_gardening,1024,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,1.1757
+synthetic-life-memories-v1,q_gardening,1024,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,1.1756
+synthetic-life-memories-v1,q_running,1024,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.1520
+synthetic-life-memories-v1,q_running,1024,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.1518
+synthetic-life-memories-v1,q_running,1024,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_garden_project,0.0000,1,1.1518
+synthetic-life-memories-v1,q_school_graduation,oracle,alias,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.5571
+synthetic-life-memories-v1,q_school_graduation,oracle,alias,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.5569
+synthetic-life-memories-v1,q_school_graduation,oracle,alias,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.5569
+synthetic-life-memories-v1,q_first_work,oracle,alias,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.5241
+synthetic-life-memories-v1,q_first_work,oracle,alias,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.5240
+synthetic-life-memories-v1,q_first_work,oracle,alias,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.5240
+synthetic-life-memories-v1,q_seaside,oracle,alias,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.4990
+synthetic-life-memories-v1,q_seaside,oracle,alias,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.4987
+synthetic-life-memories-v1,q_seaside,oracle,alias,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.4987
+synthetic-life-memories-v1,q_relocation,oracle,alias,3,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.4970
+synthetic-life-memories-v1,q_relocation,oracle,alias,5,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.4969
+synthetic-life-memories-v1,q_relocation,oracle,alias,10,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.4968
+synthetic-life-memories-v1,q_library,oracle,alias,3,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.4768
+synthetic-life-memories-v1,q_library,oracle,alias,5,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.4767
+synthetic-life-memories-v1,q_library,oracle,alias,10,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.4767
+synthetic-life-memories-v1,q_programming,oracle,alias,3,검색된 합성 기억을 근거로 답변했습니다.,eval_online_course,1.0000,0,0.4906
+synthetic-life-memories-v1,q_programming,oracle,alias,5,검색된 합성 기억을 근거로 답변했습니다.,eval_online_course,1.0000,0,0.4907
+synthetic-life-memories-v1,q_programming,oracle,alias,10,검색된 합성 기억을 근거로 답변했습니다.,eval_online_course,1.0000,0,0.4906
+synthetic-life-memories-v1,q_gardening,oracle,alias,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.4796
+synthetic-life-memories-v1,q_gardening,oracle,alias,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.4795
+synthetic-life-memories-v1,q_gardening,oracle,alias,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.4795
+synthetic-life-memories-v1,q_running,oracle,alias,3,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.4839
+synthetic-life-memories-v1,q_running,oracle,alias,5,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.4837
+synthetic-life-memories-v1,q_running,oracle,alias,10,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.4837
+synthetic-life-memories-v1,q_school_graduation,oracle,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,11.8992
+synthetic-life-memories-v1,q_school_graduation,oracle,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,11.8985
+synthetic-life-memories-v1,q_school_graduation,oracle,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,11.8983
+synthetic-life-memories-v1,q_first_work,oracle,mmr,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,12.2615
+synthetic-life-memories-v1,q_first_work,oracle,mmr,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,12.2604
+synthetic-life-memories-v1,q_first_work,oracle,mmr,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,12.2601
+synthetic-life-memories-v1,q_seaside,oracle,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,10.6413
+synthetic-life-memories-v1,q_seaside,oracle,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,10.6402
+synthetic-life-memories-v1,q_seaside,oracle,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,10.6401
+synthetic-life-memories-v1,q_relocation,oracle,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,7.4557
+synthetic-life-memories-v1,q_relocation,oracle,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,7.4549
+synthetic-life-memories-v1,q_relocation,oracle,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,7.4547
+synthetic-life-memories-v1,q_library,oracle,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,6.2430
+synthetic-life-memories-v1,q_library,oracle,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,6.2426
+synthetic-life-memories-v1,q_library,oracle,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,6.2426
+synthetic-life-memories-v1,q_programming,oracle,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_online_course,1.0000,0,6.4884
+synthetic-life-memories-v1,q_programming,oracle,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_online_course,1.0000,0,6.4876
+synthetic-life-memories-v1,q_programming,oracle,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_online_course,1.0000,0,6.4875
+synthetic-life-memories-v1,q_gardening,oracle,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,6.3039
+synthetic-life-memories-v1,q_gardening,oracle,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,6.3036
+synthetic-life-memories-v1,q_gardening,oracle,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,6.3035
+synthetic-life-memories-v1,q_running,oracle,mmr,3,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,6.3360
+synthetic-life-memories-v1,q_running,oracle,mmr,5,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,6.3352
+synthetic-life-memories-v1,q_running,oracle,mmr,10,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,6.3350
+synthetic-life-memories-v1,q_school_graduation,oracle,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.9810
+synthetic-life-memories-v1,q_school_graduation,oracle,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.9806
+synthetic-life-memories-v1,q_school_graduation,oracle,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,0.9807
+synthetic-life-memories-v1,q_first_work,oracle,bm25,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,0.7918
+synthetic-life-memories-v1,q_first_work,oracle,bm25,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,0.7917
+synthetic-life-memories-v1,q_first_work,oracle,bm25,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_volunteer_library,0.0000,1,0.7915
+synthetic-life-memories-v1,q_seaside,oracle,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.7870
+synthetic-life-memories-v1,q_seaside,oracle,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.7868
+synthetic-life-memories-v1,q_seaside,oracle,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,0.7868
+synthetic-life-memories-v1,q_relocation,oracle,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.7833
+synthetic-life-memories-v1,q_relocation,oracle,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.7832
+synthetic-life-memories-v1,q_relocation,oracle,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,0.7831
+synthetic-life-memories-v1,q_library,oracle,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.7719
+synthetic-life-memories-v1,q_library,oracle,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.7717
+synthetic-life-memories-v1,q_library,oracle,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,0.7717
+synthetic-life-memories-v1,q_programming,oracle,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_online_course,1.0000,0,0.7992
+synthetic-life-memories-v1,q_programming,oracle,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_online_course,1.0000,0,0.7991
+synthetic-life-memories-v1,q_programming,oracle,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_online_course,1.0000,0,0.7990
+synthetic-life-memories-v1,q_gardening,oracle,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.7993
+synthetic-life-memories-v1,q_gardening,oracle,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.7992
+synthetic-life-memories-v1,q_gardening,oracle,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,0.7992
+synthetic-life-memories-v1,q_running,oracle,bm25,3,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.7764
+synthetic-life-memories-v1,q_running,oracle,bm25,5,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.7763
+synthetic-life-memories-v1,q_running,oracle,bm25,10,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,0.7762
+synthetic-life-memories-v1,q_school_graduation,oracle,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,1.3450
+synthetic-life-memories-v1,q_school_graduation,oracle,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,1.3447
+synthetic-life-memories-v1,q_school_graduation,oracle,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,1.3447
+synthetic-life-memories-v1,q_first_work,oracle,hybrid,3,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,1.3015
+synthetic-life-memories-v1,q_first_work,oracle,hybrid,5,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,1.3014
+synthetic-life-memories-v1,q_first_work,oracle,hybrid,10,검색 결과가 정답 기억을 뒷받침하지 못했습니다.,eval_school_entrance,0.0000,1,1.3013
+synthetic-life-memories-v1,q_seaside,oracle,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,1.3083
+synthetic-life-memories-v1,q_seaside,oracle,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,1.3080
+synthetic-life-memories-v1,q_seaside,oracle,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_beach_trip,1.0000,0,1.3080
+synthetic-life-memories-v1,q_relocation,oracle,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,1.2874
+synthetic-life-memories-v1,q_relocation,oracle,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,1.2871
+synthetic-life-memories-v1,q_relocation,oracle,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_house_move,1.0000,0,1.2871
+synthetic-life-memories-v1,q_library,oracle,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,1.2750
+synthetic-life-memories-v1,q_library,oracle,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,1.2748
+synthetic-life-memories-v1,q_library,oracle,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_volunteer_library,1.0000,0,1.2747
+synthetic-life-memories-v1,q_programming,oracle,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_online_course,1.0000,0,1.4660
+synthetic-life-memories-v1,q_programming,oracle,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_online_course,1.0000,0,1.4656
+synthetic-life-memories-v1,q_programming,oracle,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_online_course,1.0000,0,1.4655
+synthetic-life-memories-v1,q_gardening,oracle,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,1.3196
+synthetic-life-memories-v1,q_gardening,oracle,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,1.3193
+synthetic-life-memories-v1,q_gardening,oracle,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_garden_project,1.0000,0,1.3193
+synthetic-life-memories-v1,q_running,oracle,hybrid,3,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,1.2793
+synthetic-life-memories-v1,q_running,oracle,hybrid,5,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,1.2791
+synthetic-life-memories-v1,q_running,oracle,hybrid,10,검색된 합성 기억을 근거로 답변했습니다.,eval_running_event,1.0000,0,1.2790

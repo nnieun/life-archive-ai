@@ -11,7 +11,6 @@ from backend.app.models.chunk import ChunkingConfig, ChunkUnit, TranscriptChunk
 from backend.app.models.transcript import LoadedTranscript
 from backend.app.services.chunking import (
     CHUNK_SIZE_CANDIDATES,
-    EVENT_AWARE_CANDIDATE,
     ChunkingTranscriptNotFoundError,
     chunk_and_store_transcript,
     chunk_transcript,
@@ -117,7 +116,6 @@ def test_token_chunking_uses_whitespace_delimited_source_spans() -> None:
 
 def test_chunk_configuration_and_model_reject_invalid_ranges() -> None:
     assert CHUNK_SIZE_CANDIDATES == (256, 512, 1024)
-    assert EVENT_AWARE_CANDIDATE == "event_aware"
 
     with pytest.raises(ValidationError, match="smaller than chunk_size"):
         ChunkingConfig(chunk_size=10, chunk_overlap=10)

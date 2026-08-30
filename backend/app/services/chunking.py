@@ -14,7 +14,6 @@ from backend.app.storage.models import TranscriptSegmentCreate
 from backend.app.storage.repository import SQLiteRepository
 
 CHUNK_SIZE_CANDIDATES = (256, 512, 1024)
-EVENT_AWARE_CANDIDATE = "event_aware"
 
 _TOKEN_WITH_TRAILING_WHITESPACE = re.compile(r"\S+\s*")
 

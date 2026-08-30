@@ -20,17 +20,17 @@ from backend.app.models.chunk import ChunkingConfig
 from backend.app.services.chunking import chunk_transcript
 from backend.app.services.retrieval import reciprocal_rank_fusion, tokenize_for_bm25
 
-ChunkStrategy = Literal["256", "512", "1024", "event_aware"]
-SearchMethod = Literal["dense", "mmr", "bm25", "hybrid"]
+ChunkStrategy = Literal["256", "512", "1024", "oracle"]
+SearchMethod = Literal["alias", "mmr", "bm25", "hybrid"]
 
 CHUNK_STRATEGIES: tuple[ChunkStrategy, ...] = (
     "256",
     "512",
     "1024",
-    "event_aware",
+    "oracle",
 )
 SEARCH_METHODS: tuple[SearchMethod, ...] = (
-    "dense",
+    "alias",
     "mmr",
     "bm25",
     "hybrid",
@@ -165,10 +165,14 @@ def build_chunks(
 ) -> list[EvaluationChunk]:
     """Apply fixed or event-aware candidates to the same transcript."""
 
-    if strategy == "event_aware":
+    # NOTE: "oracle"은 청킹 전략이 아니다.
+    # 평가 데이터셋이 이미 알고 있는 사건 경계를 그대로 잘라 쓰는 상한선(upper bound)이며,
+    # 고정 크기 전략이 이 상한에 얼마나 근접하는지 재기 위한 비교 기준으로만 쓴다.
+    # 실제 서비스(backend/app/services/chunking.py)에는 이 전략이 존재하지 않는다.
+    if strategy == "oracle":
         return [
             EvaluationChunk(
-                chunk_id=f"event_{index:02d}",
+                chunk_id=f"oracle_{index:02d}",
                 text=span.text,
                 start_offset=span.start_offset,
                 end_offset=span.end_offset,
@@ -229,7 +233,7 @@ def _cosine(left: list[str], right: list[str]) -> float:
     return numerator / (left_norm * right_norm)
 
 
-def _dense_scores(
+def _alias_scores(
     chunks: list[EvaluationChunk],
     query: str,
 ) -> list[RankedChunk]:
@@ -307,18 +311,18 @@ def rank_chunks(
 ) -> list[RankedChunk]:
     """Rank chunks with one deterministic evaluation candidate."""
 
-    if method == "dense":
-        return _dense_scores(chunks, query)
+    if method == "alias":
+        return _alias_scores(chunks, query)
     if method == "mmr":
         return _mmr_scores(chunks, query)
     if method == "bm25":
         return _bm25_scores(chunks, query)
 
-    dense = _dense_scores(chunks, query)
+    alias = _alias_scores(chunks, query)
     sparse = _bm25_scores(chunks, query)
     scores = reciprocal_rank_fusion(
         [
-            [item.chunk.chunk_id for item in dense],
+            [item.chunk.chunk_id for item in alias],
             [item.chunk.chunk_id for item in sparse],
         ]
     )
@@ -522,15 +526,28 @@ def write_summary(
     """Write a compact comparison with limitations and reproduction details."""
 
     aggregates = _aggregate(retrieval_rows, generation_rows)
+    # "oracle"은 정답 경계를 그대로 쓴 상한선이므로 실사용 후보에서 제외하고 고른다.
+    usable = [row for row in aggregates if row["chunk_strategy"] != "oracle"]
     best = max(
-        aggregates,
+        usable,
         key=lambda row: (
-            row["recall"],
             row["citation"],
             -row["unsupported"],
+            row["recall"],
             -row["retrieval_ms"],
         ),
     )
+    ceiling = max(
+        (row for row in aggregates if row["chunk_strategy"] == "oracle"),
+        key=lambda row: (row["citation"], -row["unsupported"]),
+    )
+
+    # 청크 크기별 인용 정확도 피벗 (검색 방식과 무관하게 나타나는 추세를 보이기 위함)
+    methods = sorted({row["search_method"] for row in aggregates})
+    order = ["1024", "512", "256", "oracle"]
+    pivot: dict[str, dict[str, float]] = {}
+    for row in aggregates:
+        pivot.setdefault(row["chunk_strategy"], {})[row["search_method"]] = row["citation"]
     lines = [
         "# Retrieval Evaluation Summary",
         "",
@@ -539,8 +556,8 @@ def write_summary(
         f"- Dataset: `{dataset.dataset_id}`",
         f"- Synthetic memories: {len(dataset.events)}",
         f"- Evaluation queries: {len(dataset.queries)}",
-        "- Chunk candidates: 256, 512, 1024 characters, event-aware",
-        "- Search candidates: dense similarity, MMR, BM25, hybrid RRF",
+        "- Chunk candidates: 256, 512, 1024 characters, oracle(정답 경계 상한선)",
+        "- Search candidates: lexical-alias(임베딩 API 대체), MMR, BM25, hybrid RRF",
         "- Top-K values: 3, 5, 10",
         "- No OpenAI API or personal transcript was used.",
         "",
@@ -556,10 +573,31 @@ def write_summary(
             f"{row['citation']:.3f} | {row['unsupported']:.3f} | "
             f"{row['retrieval_ms']:.4f} | {row['e2e_ms']:.4f} |"
         )
+    lines.extend(["", "## 핵심 관찰 — 청크 크기가 인용 품질을 지배한다", ""])
+    lines.append("| Chunk | " + " | ".join(methods) + " |")
+    lines.append("|---|" + "---:|" * len(methods))
+    for chunk in order:
+        if chunk not in pivot:
+            continue
+        label = "oracle (상한선)" if chunk == "oracle" else chunk
+        cells = " | ".join(f"{pivot[chunk].get(m, 0.0):.3f}" for m in methods)
+        lines.append(f"| {label} | {cells} |")
     lines.extend(
         [
             "",
-            "## Best Observed Configuration",
+            "표의 값은 인용 정확도다. 검색 방식을 무엇으로 바꾸든 같은 청크 크기 안에서는 "
+            "차이가 작은 반면, 청크 크기를 1024에서 256으로 줄이면 모든 검색 방식에서 "
+            "인용 정확도가 함께 오른다. 이 데이터셋에서는 검색기 선택보다 청킹이 결과를 "
+            "더 크게 좌우했다.",
+            "",
+            "또한 256은 정답 경계로 자른 상한선과 같은 인용 정확도에 도달했다. "
+            "즉 이 규모에서는 사건 경계를 몰라도 충분히 작게 자르는 것으로 상한에 근접할 수 있었다.",
+            "",
+            "하이브리드(RRF)는 단일 검색기보다 2~3배 느렸고 이 데이터셋에서는 품질 이득이 "
+            "없었다. 어휘가 어긋나는 질의가 거의 없는 소규모 합성 데이터라 결합의 이점이 "
+            "드러나지 않는 조건이었다고 본다.",
+            "",
+            "## Best Observed Configuration (실사용 가능한 것 중)",
             "",
             f"- Chunk: `{best['chunk_strategy']}`",
             f"- Search: `{best['search_method']}`",
@@ -567,6 +605,9 @@ def write_summary(
             f"- Recall@K: `{best['recall']:.3f}`",
             f"- Citation correctness: `{best['citation']:.3f}`",
             f"- Unsupported answer rate: `{best['unsupported']:.3f}`",
+            "",
+            f"참고 — 상한선(oracle): Citation `{ceiling['citation']:.3f}` / "
+            f"Unsupported `{ceiling['unsupported']:.3f}`",
             "",
             "## Reproduction",
             "",
@@ -581,7 +622,11 @@ def write_summary(
             "",
             "## Limitations",
             "",
-            "- Dense similarity uses deterministic lexical-semantic aliases instead of an external embedding API.",
+            "- `oracle`은 청킹 전략이 아니다. 평가 데이터셋이 이미 아는 사건 경계를 그대로 잘라 쓴 상한선이며, "
+            "실제 서비스(`backend/app/services/chunking.py`)에는 존재하지 않는다. 고정 크기 전략이 이 상한에 "
+            "얼마나 근접하는지 재기 위한 비교 기준으로만 사용했다.",
+            "- `alias`는 임베딩 검색이 아니다. 외부 임베딩 API 없이 결정론적으로 재현하기 위해 "
+            "손으로 정의한 어휘-의미 별칭 표를 사용했다. 실제 임베딩 모델로의 교체는 다음 과제로 남겼다.",
             "- Generation evaluation uses a deterministic grounded-answer simulator, not an LLM.",
             "- Results compare MVP settings on a small synthetic corpus and are not a claim about production accuracy.",
         ]
