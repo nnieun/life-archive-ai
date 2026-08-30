@@ -129,6 +129,9 @@ CREATE INDEX IF NOT EXISTS idx_memories_transcript_status
     ON memories(transcript_id, status);
 CREATE INDEX IF NOT EXISTS idx_memories_event_date
     ON memories(event_date);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_memories_supersedes
+    ON memories(supersedes_memory_id)
+    WHERE supersedes_memory_id IS NOT NULL AND status != 'deleted';
 CREATE INDEX IF NOT EXISTS idx_memory_sources_memory
     ON memory_sources(memory_id);
 CREATE INDEX IF NOT EXISTS idx_messages_session_created

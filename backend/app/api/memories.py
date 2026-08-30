@@ -11,6 +11,13 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validato
 
 from backend.app.core.config import get_settings
 from backend.app.models.ingestion import IngestionResult
+from backend.app.models.memory import MemoryCorrection
+from backend.app.services.corrections import (
+    MemoryAlreadyCorrectedError,
+    MemoryCorrectionService,
+    MemoryNotFoundError,
+    UntraceableMemoryError,
+)
 from backend.app.services.ingestion import (
     IngestionError,
     InvalidUploadError,
@@ -116,6 +123,60 @@ def ingest_transcript(
             status_code=503,
             detail="Transcript processing is unavailable",
         ) from exception
+
+
+@lru_cache(maxsize=1)
+def get_correction_service() -> MemoryCorrectionService:
+    """Build the SQLite-backed correction writer lazily."""
+
+    return MemoryCorrectionService(get_memory_repository())
+
+
+@router.post(
+    "/memories/{memory_id}/corrections",
+    response_model=MemoryView,
+    status_code=201,
+)
+def correct_memory(
+    memory_id: str,
+    correction: MemoryCorrection,
+    service: MemoryCorrectionService = Depends(get_correction_service),
+    repository: SQLiteRepository = Depends(get_memory_repository),
+) -> MemoryView:
+    """Append a corrected memory that supersedes the stored one."""
+
+    try:
+        memory = service.correct_memory(memory_id, correction)
+    except MemoryNotFoundError as exception:
+        raise HTTPException(status_code=404, detail="Memory was not found") from exception
+    except MemoryAlreadyCorrectedError as exception:
+        raise HTTPException(
+            status_code=409,
+            detail="Memory was already corrected",
+        ) from exception
+    except UntraceableMemoryError as exception:
+        raise HTTPException(
+            status_code=422,
+            detail="Memory has no transcript source to inherit",
+        ) from exception
+    except StorageError as exception:
+        raise HTTPException(
+            status_code=503,
+            detail="Memory correction is unavailable",
+        ) from exception
+    return MemoryView(
+        memory=memory,
+        citations=[
+            CitationRecord(
+                memory_id=source.memory_id,
+                transcript_id=source.transcript_id,
+                segment_id=source.segment_id,
+                start_offset=source.start_offset,
+                end_offset=source.end_offset,
+            )
+            for source in repository.list_memory_sources(memory.memory_id)
+        ],
+    )
 
 
 @router.get("/memories", response_model=list[MemoryView])

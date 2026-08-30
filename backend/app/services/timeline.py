@@ -9,7 +9,7 @@ from datetime import date, datetime
 
 from backend.app.models.memory import DatePrecision
 from backend.app.models.timeline import TimelineEvent, TimelineResult
-from backend.app.storage.models import CitationRecord, MemoryRecord, MemoryStatus
+from backend.app.storage.models import CitationRecord, MemoryRecord
 from backend.app.storage.repository import SQLiteRepository
 
 _YEAR_PATTERN = re.compile(r"(?<!\d)(\d{4})(?!\d)")
@@ -48,7 +48,8 @@ class TimelineService:
         if start_date is not None and end_date is not None and start_date > end_date:
             raise ValueError("start_date must not follow end_date")
 
-        memories = _prefer_corrections(self._repository.list_memories())
+        # list_memories already hides memories a live correction superseded.
+        memories = self._repository.list_memories()
         dated: list[_DatedEvent] = []
         undated: list[TimelineEvent] = []
         for memory in memories:
@@ -106,22 +107,6 @@ class TimelineService:
             )
             for source in self._repository.list_memory_sources(memory.memory_id)
         ]
-
-
-def _prefer_corrections(memories: list[MemoryRecord]) -> list[MemoryRecord]:
-    """Remove active/corrected rows superseded by another visible correction."""
-
-    superseded_ids = {
-        memory.supersedes_memory_id
-        for memory in memories
-        if memory.status is MemoryStatus.CORRECTED
-        and memory.supersedes_memory_id is not None
-    }
-    return [
-        memory
-        for memory in memories
-        if memory.memory_id not in superseded_ids
-    ]
 
 
 def _timeline_event(

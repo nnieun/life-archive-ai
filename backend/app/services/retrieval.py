@@ -267,8 +267,15 @@ class HybridMemoryRetriever:
                 memory_id,
             ),
         )
+        # BM25 drops superseded ids on sync, but a Chroma vector survives until
+        # the next sync_from_sqlite, so a correction is honoured here too.
+        visible_ids = {
+            memory.memory_id for memory in self._repository.list_memories()
+        }
         results: list[RetrievalHit] = []
         for memory_id in ordered_ids:
+            if memory_id not in visible_ids:
+                continue
             memory = self._repository.get_memory(memory_id)
             if memory is None:
                 continue
