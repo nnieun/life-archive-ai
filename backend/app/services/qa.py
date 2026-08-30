@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Protocol, TypeVar, cast
@@ -42,7 +43,12 @@ DEFAULT_OPENAI_MODEL = "gpt-5.6-sol"
 INSUFFICIENT_ANSWER = "질문에 답할 수 있는 충분한 근거를 찾지 못했습니다."
 REJECTED_ANSWER = "근거 검증을 통과하지 못해 답변할 수 없습니다."
 
+UNTRACEABLE_CITATION = "A cited memory could not be traced back to transcript text"
+
 StructuredOutputT = TypeVar("StructuredOutputT", bound=BaseModel)
+
+_DIGIT_RUN = re.compile(r"\d+")
+_SHORTEST_CHECKED_NAME = 2
 
 
 class StructuredQAModel(Protocol):
@@ -372,10 +378,30 @@ class GroundedQAService:
                 for index in verification.unsupported_claim_indexes
             ):
                 raise QAOutputError("Verifier returned an invalid claim index")
+            if not verification.passed:
+                return {
+                    "validation_result": QAValidationResult(
+                        stage="answer",
+                        passed=False,
+                        reason=verification.reason,
+                    )
+                }
+            grounding_error = self._grounding_error(
+                draft,
+                state["selected_evidence"],
+            )
+            if grounding_error is not None:
+                return {
+                    "validation_result": QAValidationResult(
+                        stage="answer",
+                        passed=False,
+                        reason=grounding_error,
+                    )
+                }
             return {
                 "validation_result": QAValidationResult(
                     stage="answer",
-                    passed=verification.passed,
+                    passed=True,
                     reason=verification.reason,
                 )
             }
@@ -426,6 +452,80 @@ class GroundedQAService:
                     reason="Answer rewrite failed",
                 ),
             }
+
+    def _grounding_error(
+        self,
+        draft: GroundedAnswerDraft,
+        evidence: list[QAEvidence],
+    ) -> str | None:
+        """Re-check a verifier-approved draft against the transcript itself.
+
+        ``_draft_validation_error`` only proves the cited IDs were retrieved, and
+        ``AnswerVerification`` is the model grading its own answer. Neither stops
+        a real memory_id from carrying an invented sentence, so the tokens that
+        can be checked without a model - numbers and known people - are checked
+        against the cited memories and their verbatim transcript excerpts here.
+        """
+
+        grounding: dict[str, str] = {}
+        for item in evidence:
+            text = self._grounding_text(item)
+            if text is None:
+                return UNTRACEABLE_CITATION
+            grounding[item.memory_id] = text
+        people_by_memory = {item.memory_id: set(item.people) for item in evidence}
+        known_people = {
+            person
+            for people in people_by_memory.values()
+            for person in people
+            if len(person) >= _SHORTEST_CHECKED_NAME
+        }
+
+        for claim in draft.claims:
+            cited_text = "\n".join(
+                grounding[memory_id] for memory_id in claim.memory_ids
+            )
+            for number in _DIGIT_RUN.findall(claim.text):
+                if not _is_grounded_number(number, cited_text):
+                    return (
+                        f"Answer claim used the number {number} "
+                        "that its cited memories do not contain"
+                    )
+            cited_people = {
+                person
+                for memory_id in claim.memory_ids
+                for person in people_by_memory[memory_id]
+            }
+            for person in sorted(known_people - cited_people):
+                if person in claim.text:
+                    return (
+                        f"Answer claim named {person} without citing the memory "
+                        "that records the name"
+                    )
+        return None
+
+    def _grounding_text(self, item: QAEvidence) -> str | None:
+        """Join one memory's stored fields with its verbatim transcript excerpts."""
+
+        excerpts: list[str] = []
+        for citation in item.sources:
+            segment = self._repository.get_segment(citation.segment_id)
+            if segment is None:
+                return None
+            start = max(citation.start_offset - segment.start_offset, 0)
+            end = max(citation.end_offset - segment.start_offset, start)
+            excerpts.append(segment.content[start:end])
+        return "\n".join(
+            [
+                item.title,
+                item.summary,
+                item.location or "",
+                item.event_date or "",
+                item.uncertainty_notes or "",
+                *item.people,
+                *excerpts,
+            ]
+        )
 
     def _draft_update(
         self,
@@ -547,6 +647,15 @@ def _invoke_structured(
         return parsed if isinstance(parsed, schema) else schema.model_validate(parsed)
     except ValidationError as exception:
         raise QAOutputError("Model output did not match its schema") from exception
+
+
+def _is_grounded_number(number: str, grounding: str) -> bool:
+    """Accept a digit run that occurs in the grounding text, zero-padded or not."""
+
+    if number in grounding:
+        return True
+    unpadded = number.lstrip("0")
+    return bool(unpadded) and unpadded in grounding
 
 
 def _draft_validation_error(

@@ -100,9 +100,12 @@ flowchart TD
     CHECK -- 아니요 --> REJECT[답변 거절]
     CHECK -- 예 --> GENERATE[인용 포함 답변 생성]
 
-    GENERATE --> VERIFY{근거 검증 통과?}
-    VERIFY -- 예 --> FINAL[최종 답변 저장]
+    GENERATE --> VERIFY{LLM 근거 검증 통과?}
+    VERIFY -- 예 --> GROUND{원문 대조 통과?}
     VERIFY -- 아니요 --> REWRITE[한 번만 수정]
+
+    GROUND -- 예 --> FINAL[최종 답변 저장]
+    GROUND -- 아니요 --> REWRITE
 
     REWRITE --> VERIFY2{재검증 통과?}
     VERIFY2 -- 예 --> FINAL
@@ -114,6 +117,10 @@ flowchart TD
 * ChromaDB 의미 검색과 BM25 검색 결과를 RRF로 결합합니다.
 * 선택된 기억에 포함되지 않은 `memory_id`는 인용할 수 없습니다.
 * 생성된 주장마다 하나 이상의 기억 출처가 필요합니다.
+* LLM 검증이 통과시킨 답변도 원문 대조를 한 번 더 거칩니다. 주장에 등장하는
+  숫자와 인물 이름은 인용된 기억의 필드와 `memory_sources` offset으로 잘라낸
+  전사 원문에 실제로 있어야 하며, 없으면 LLM 판정과 무관하게 거부됩니다.
+* 인용된 기억의 원문을 찾을 수 없으면(세그먼트 삭제 등) 검증에 실패합니다.
 * 검증 실패 시 답변을 한 번만 수정합니다.
 * 재검증도 실패하면 생성된 초안을 사용자에게 반환하지 않습니다.
 
