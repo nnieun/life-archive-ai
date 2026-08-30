@@ -12,6 +12,7 @@ SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS transcripts (
     transcript_id TEXT PRIMARY KEY,
     filename TEXT NOT NULL,
+    source_path TEXT,
     recording_id TEXT UNIQUE,
     language TEXT,
     source_type TEXT NOT NULL,
@@ -152,6 +153,10 @@ MEMORY_COLUMN_MIGRATIONS = {
     "uncertainty_notes": "TEXT",
 }
 
+TRANSCRIPT_COLUMN_MIGRATIONS = {
+    "source_path": "TEXT",
+}
+
 
 class SQLiteDatabase:
     """Own one SQLite connection with enforced foreign keys and transactions."""
@@ -187,6 +192,21 @@ class SQLiteDatabase:
         """Create every application table and index idempotently."""
         with self._lock:
             self._connection.executescript(SCHEMA_SQL)
+            existing_transcript_columns = {
+                str(row["name"])
+                for row in self._connection.execute(
+                    "PRAGMA table_info(transcripts)"
+                ).fetchall()
+            }
+            for column, definition in TRANSCRIPT_COLUMN_MIGRATIONS.items():
+                if column not in existing_transcript_columns:
+                    self._connection.execute(
+                        f"ALTER TABLE transcripts ADD COLUMN {column} {definition}"
+                    )
+            self._connection.execute(
+                "UPDATE transcripts SET source_path = 'data/raw/transcripts/' || filename "
+                "WHERE source_path IS NULL"
+            )
             existing_columns = {
                 str(row["name"])
                 for row in self._connection.execute(

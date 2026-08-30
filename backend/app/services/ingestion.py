@@ -11,6 +11,7 @@ from backend.app.models.ingestion import IngestionResult
 from backend.app.models.transcript import TranscriptLoadRequest
 from backend.app.services.chunking import chunk_and_store_transcript
 from backend.app.services.memory_extraction import (
+    MemoryExtractionError,
     StructuredMemoryModel,
     extract_and_store_segment,
 )
@@ -19,7 +20,7 @@ from backend.app.services.transcript_loader import (
     TranscriptLoadError,
 )
 from backend.app.services.vector_index import MemoryVectorIndex
-from backend.app.storage.repository import SQLiteRepository
+from backend.app.storage.repository import SQLiteRepository, StorageError
 
 
 class IngestionError(RuntimeError):
@@ -71,6 +72,22 @@ class TranscriptIngestionService:
         if content_hash in known_hashes:
             raise UploadConflictError("This transcript content already exists")
         target = self._transcript_root / safe_name
+        if target.exists():
+            try:
+                same_content = target.read_bytes() == content
+            except OSError as exception:
+                raise UploadConflictError(
+                    "A transcript with this filename already exists"
+                ) from exception
+            if not same_content:
+                raise UploadConflictError(
+                    "A transcript with this filename already exists"
+                )
+            # A deleted transcript keeps its immutable raw file. Re-uploading
+            # the same content is therefore a new processing attempt, stored
+            # under a collision-free filename instead of overwriting the raw file.
+            target = self._next_reprocess_target(target)
+            safe_name = target.name
         try:
             with target.open("xb") as uploaded_file:
                 uploaded_file.write(content)
@@ -114,6 +131,13 @@ class TranscriptIngestionService:
                         "transcript_id": f"{loaded.transcript_id}_{uuid4().hex[:8]}"
                     }
                 )
+            loaded = loaded.model_copy(
+                update={
+                    "source_path": str(
+                        Path("data/raw/transcripts") / safe_name
+                    ).replace("\\", "/")
+                }
+            )
             self._repository.create_transcript(loaded)
             transcript_id = loaded.transcript_id
             chunks = chunk_and_store_transcript(
@@ -139,6 +163,12 @@ class TranscriptIngestionService:
         except TranscriptLoadError as exception:
             self._cleanup_failed_upload(target, transcript_id, indexed_memory_ids)
             raise InvalidUploadError("TXT upload could not be processed") from exception
+        except MemoryExtractionError:
+            self._cleanup_failed_upload(target, transcript_id, indexed_memory_ids)
+            raise
+        except StorageError:
+            self._cleanup_failed_upload(target, transcript_id, indexed_memory_ids)
+            raise
         except Exception as exception:
             self._cleanup_failed_upload(target, transcript_id, indexed_memory_ids)
             if isinstance(exception, IngestionError):
@@ -156,6 +186,19 @@ class TranscriptIngestionService:
             ),
             memory_ids=[memory.memory_id for memory in memories],
         )
+
+    @staticmethod
+    def _next_reprocess_target(target: Path) -> Path:
+        """Return a collision-free filename for reprocessing identical raw data."""
+
+        stem = target.stem
+        suffix = target.suffix
+        index = 2
+        while True:
+            candidate = target.with_name(f"{stem} ({index}){suffix}")
+            if not candidate.exists():
+                return candidate
+            index += 1
 
     def _cleanup_failed_upload(
         self,
@@ -196,12 +239,13 @@ class TranscriptIngestionService:
             raise InvalidUploadError("Upload must be a plain TXT or PDF filename")
         if not content:
             raise InvalidUploadError("Upload must not be empty")
-        try:
-            decoded = content.decode(
-                "utf-8-sig" if content.startswith(b"\xef\xbb\xbf") else "utf-8"
-            )
-        except UnicodeDecodeError as exception:
-            raise InvalidUploadError("TXT upload must use UTF-8") from exception
-        if not decoded.strip():
-            raise InvalidUploadError("TXT upload must contain text")
+        if Path(stripped_name).suffix.casefold() == ".txt":
+            try:
+                decoded = content.decode(
+                    "utf-8-sig" if content.startswith(b"\xef\xbb\xbf") else "utf-8"
+                )
+            except UnicodeDecodeError as exception:
+                raise InvalidUploadError("TXT upload must use UTF-8") from exception
+            if not decoded.strip():
+                raise InvalidUploadError("TXT upload must contain text")
         return stripped_name

@@ -85,10 +85,15 @@ class QAOutputError(QAError):
 
 def build_openai_qa_models(
     model_name: str = DEFAULT_OPENAI_MODEL,
+    *,
+    api_key: str | None = None,
 ) -> QAModels:
     """Create strict OpenAI Structured Output models for all Q&A stages."""
 
-    model = ChatOpenAI(model=model_name)
+    model_kwargs: dict[str, object] = {"model": model_name}
+    if api_key:
+        model_kwargs["api_key"] = api_key
+    model = ChatOpenAI(**model_kwargs)
     options = {
         "method": "json_schema",
         "include_raw": True,

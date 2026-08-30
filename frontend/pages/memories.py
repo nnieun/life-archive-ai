@@ -56,6 +56,7 @@ else:
             if memory.location:
                 st.write("장소:", memory.location)
             if memory.uncertainty_notes:
+                st.write("불확실한 점:", memory.uncertainty_notes)
                 st.warning(f"불확실성: {memory.uncertainty_notes}")
             else:
                 st.caption("추가로 기록된 불확실성이 없습니다.")

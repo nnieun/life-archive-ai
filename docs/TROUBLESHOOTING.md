@@ -34,6 +34,86 @@ API 키는 코드, 로그, 화면 캡처, 커밋에 기록하지 않습니다. �
 있습니다. 정상 완료 여부는 화면보다 백엔드의 최종 응답과 로그를 기준으로
 확인합니다.
 
+## 기억 추출 업로드 오류를 해결한 과정
+
+2026-08-30에 한 업로드 문제를 추적하면서 `503`, `500`, `422`가 차례로
+발생했습니다. 아래 내용은 같은 문제를 다시 반복하지 않기 위한 최종 기록입니다.
+
+### 관찰된 증상
+
+- 처음에는 모든 하위 오류가 `503 transcript_processing_unavailable`로 합쳐져
+  실제 실패 지점을 알 수 없었습니다.
+- 예외 처리 코드를 나누는 과정에서 `ingest_unexpected_nameerror` 같은 `500`
+  오류가 드러났습니다.
+- 구조화 출력 검증을 강화한 뒤에는 다음 `422 memory_output_invalid` 원인이
+  각각 구분되어 나타났습니다.
+  - `event_date/date_precision format mismatch`
+  - `evidence range is outside the transcript chunk`
+  - `evidence quote was not found in the transcript chunk`
+- 추출이 성공해도 업로드의 `language="ko"`와 달리 제목과 요약이 영어로
+  생성되는 경우가 있었습니다.
+
+### 실제 원인
+
+1. 하나의 포괄적인 예외가 OpenAI, Pydantic, SQLite, Chroma 오류를 모두
+   가리고 있었습니다.
+2. 모델이 문자 offset을 직접 계산하게 하면 chunk 상대 좌표, transcript 절대
+   좌표, 한 기반 좌표가 섞이면서 원문 범위를 벗어날 수 있었습니다.
+3. Structured Output은 필드 형태는 맞춰도 `event_date`와 `date_precision`의
+   의미상 조합까지 항상 올바르게 만들지는 않았습니다.
+4. `ko`를 강제로 적용하고 영어 결과를 거부하는 방식은 사용자용 제목뿐 아니라
+   원문 그대로여야 하는 `evidence_text`까지 번역하도록 유도할 수 있었습니다.
+   번역된 인용문은 원문 chunk에서 찾을 수 없으므로 업로드 전체가 실패했습니다.
+5. 추출, SQLite 저장, Chroma 색인이 한 요청에서 순서대로 실행되므로 중간 실패
+   시 이미 저장된 일부 데이터와 벡터를 함께 정리해야 했습니다.
+
+### 효과가 없었거나 되돌린 접근
+
+- 모델이 반환한 숫자 offset을 여러 좌표계로 추측해 보정하는 방식은 모든 모델
+  응답을 안전하게 복구하지 못했습니다.
+- `language="ko"`를 절대 조건으로 두고 영어 결과를 재시도하거나 거부하는
+  방식은 정확한 원문 인용보다 출력 언어를 우선하게 만들어 되돌렸습니다.
+- 백엔드 예외 메시지를 그대로 화면에 출력하는 방식은 상세 원인을 보여 주지만
+  로컬 경로나 내부 문자열도 노출할 수 있어 사용하지 않습니다.
+
+### 최종 해결 방식
+
+- `.env`는 프로젝트 루트에서 읽고, API 키는 메모리 추출 모델과 임베딩 모델에
+  명시적으로 전달합니다. 키 값 자체는 로그나 화면에 출력하지 않습니다.
+- 모델은 숫자 offset 대신 원문에서 복사한 `evidence_text`를 반환합니다.
+  Python이 SQLite에 저장된 chunk에서 해당 문장을 찾아 상대 offset과 절대
+  transcript offset을 계산합니다.
+- 날짜가 유효한 형태라면 백엔드가 실제 형식에서 `year`, `month`, `day`,
+  `exact` 정밀도를 다시 계산합니다. 모델 날짜를 해석할 수 없으면 근거 없는
+  날짜를 저장하지 않고 `unknown`으로 낮춰 기억 본문은 보존합니다.
+- `language`는 transcript metadata로 저장하지만 결과 언어 때문에 업로드를
+  실패시키지는 않습니다. 제목과 요약은 영어일 수 있으며, `evidence_text`만은
+  반드시 원문 언어와 문자를 그대로 유지해야 합니다.
+- API는 인증, 사용량 제한, 연결, 모델 출력, 저장소 오류를 서로 다른 상태와
+  오류 코드로 변환합니다. 프런트엔드는 안전한 안내, 오류 코드, 요청 ID를
+  표시하되 내부 예외 문자열은 숨깁니다.
+- 실패한 ingestion은 해당 요청에서 만든 SQLite 레코드, 이미 생성된 Chroma
+  벡터, 미완료 raw 파일을 정리하므로 같은 파일을 다시 처리할 수 있습니다.
+
+### 같은 문제가 재발했을 때 확인 순서
+
+1. 화면의 오류 코드와 요청 ID를 기록합니다.
+2. 같은 요청 ID의 `transcript_ingest_failed` 로그에서 `error_type`,
+   `error_code`, `error_param`을 확인합니다. `request_completed` 한 줄만으로는
+   원인을 판단하지 않습니다.
+3. `memory_output_invalid`이면 괄호 안의 세부 원인이 날짜인지 원문 인용인지
+   먼저 구분합니다.
+4. `evidence quote was not found`이면 사용자용 필드의 언어와 관계없이
+   `evidence_text`가 원문을 번역하거나 요약하지 않았는지 확인합니다.
+5. 수정 후 Uvicorn의 reload 여부를 확인하고 같은 파일을 다시 업로드합니다.
+6. 실제 OpenAI 호출 없이 다음 전체 테스트를 통과시킵니다.
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+```
+
+이 수정 시점의 결과는 `169 passed`였습니다.
+
 ## PDF 업로드
 
 PDF는 텍스트 레이어가 있는 문서만 처리할 수 있습니다. 이미지로만 구성된
@@ -105,4 +185,3 @@ py -3.13 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe -m pytest
 ```
-

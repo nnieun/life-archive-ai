@@ -7,7 +7,10 @@ from pathlib import Path
 from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict
 
-load_dotenv()
+# Resolve `.env` from the repository root instead of the process working
+# directory. This keeps the setting reliable when Uvicorn is started elsewhere.
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+load_dotenv(PROJECT_ROOT / ".env", override=True)
 
 
 class Settings(BaseModel):
@@ -19,6 +22,7 @@ class Settings(BaseModel):
     app_version: str = "0.0.0"
     api_prefix: str = "/api/v1"
     environment: str = "development"
+    openai_api_key: str = ""
     openai_model: str = "gpt-5.6-sol"
     openai_embedding_model: str = "text-embedding-3-small"
     sqlite_database_path: Path = Path("data/db/life_archive.sqlite3")
@@ -31,6 +35,7 @@ def get_settings() -> Settings:
     """Return one immutable settings instance for the process."""
     return Settings(
         environment=getenv("APP_ENV", "development"),
+        openai_api_key=getenv("OPENAI_API_KEY", "").strip(),
         openai_model=getenv("OPENAI_MODEL", "gpt-5.6-sol"),
         openai_embedding_model=getenv(
             "OPENAI_EMBEDDING_MODEL",
