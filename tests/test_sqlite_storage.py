@@ -8,6 +8,16 @@ from pathlib import Path
 
 import pytest
 
+from backend.app.models.gap import (
+    MemoryGapCandidateCreate,
+    MemoryGapCandidateRelation,
+    MemoryGapCandidateStatus,
+    MemoryGapCreate,
+    MemoryGapSourceType,
+    MemoryGapStatus,
+    MemoryGapType,
+    MemoryGapUpdate,
+)
 from backend.app.models.memory import DatePrecision
 from backend.app.models.transcript import LoadedTranscript
 from backend.app.storage.database import SQLiteDatabase
@@ -37,6 +47,8 @@ EXPECTED_TABLES = {
     "transcript_segments",
     "memories",
     "memory_sources",
+    "memory_gaps",
+    "memory_gap_candidates",
     "conversation_sessions",
     "conversation_messages",
     "autobiographies",
@@ -291,6 +303,80 @@ def test_segments_and_memory_sources_round_trip(storage) -> None:
     assert repository.list_memory_sources("mem_001") == [source]
     assert repository.delete_memory_source(source.memory_source_id) is True
     assert repository.list_memory_sources("mem_001") == []
+
+
+def test_memory_gap_and_candidate_round_trip(storage) -> None:
+    _database, repository, _path = storage
+    repository.create_transcript(_loaded_transcript())
+    repository.create_memory(
+        MemoryCreate(
+            memory_id="mem_gap",
+            transcript_id="tr_001",
+            title="이름을 모르는 영화관",
+            summary="대구에서 갔던 영화관 이름이 기억나지 않는다.",
+            people=["친구"],
+            location="대구",
+            event_date="2001",
+            date_precision=DatePrecision.YEAR,
+            confidence=0.8,
+        )
+    )
+    gap = repository.create_memory_gap(
+        MemoryGapCreate(
+            gap_id="gap_001",
+            memory_id="mem_gap",
+            gap_type=MemoryGapType.MISSING_LOCATION,
+            clue_text="영화관 이름이 기억나지 않는다.",
+            missing_field="location_detail",
+            period_start="2001",
+            period_end="2001",
+            location="대구",
+            people=["친구"],
+            confidence=0.9,
+            importance_score=0.9,
+            source_type=MemoryGapSourceType.MEMORY,
+            source_id="mem_gap",
+        )
+    )
+    candidate = repository.create_memory_gap_candidate(
+        MemoryGapCandidateCreate(
+            candidate_id="candidate_001",
+            gap_id=gap.gap_id,
+            value="아카데미극장",
+            explanation="같은 시기 대구 기록에서 발견했습니다.",
+            deterministic_score=0.88,
+            llm_relation=MemoryGapCandidateRelation.SUPPORTS,
+            supporting_source_ids=["mem_support"],
+        )
+    )
+
+    assert repository.get_memory_gap(gap.gap_id) == gap
+    assert repository.list_memory_gaps(
+        statuses={MemoryGapStatus.OPEN}
+    ) == [gap]
+    assert repository.list_memory_gap_candidates(gap.gap_id) == [candidate]
+
+    searching = repository.update_memory_gap(
+        gap.gap_id,
+        MemoryGapUpdate(
+            status=MemoryGapStatus.SEARCHING,
+            web_search_consent=True,
+            user_clues=["친구 민수와 함께 갔다."],
+        ),
+    )
+    rejected = repository.update_memory_gap_candidate_status(
+        candidate.candidate_id,
+        MemoryGapCandidateStatus.REJECTED,
+    )
+
+    assert searching.status is MemoryGapStatus.SEARCHING
+    assert searching.web_search_consent is True
+    assert searching.user_clues == ["친구 민수와 함께 갔다."]
+    assert rejected.status is MemoryGapCandidateStatus.REJECTED
+
+    assert repository.delete_transcript("tr_001") is True
+    assert repository.get_memory_gap(gap.gap_id) is None
+    assert repository.get_memory_gap_candidate(candidate.candidate_id) is None
 
 
 def test_conversation_and_autobiography_json_round_trip(storage) -> None:

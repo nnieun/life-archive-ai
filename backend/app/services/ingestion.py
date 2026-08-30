@@ -10,6 +10,10 @@ from uuid import uuid4
 from backend.app.models.ingestion import IngestionResult
 from backend.app.models.transcript import TranscriptLoadRequest
 from backend.app.services.chunking import chunk_and_store_transcript
+from backend.app.services.gap_detection import (
+    MemoryGapDetectionService,
+    MemoryGapDetector,
+)
 from backend.app.services.memory_extraction import (
     MemoryExtractionError,
     StructuredMemoryModel,
@@ -45,6 +49,7 @@ class TranscriptIngestionService:
         extraction_model: StructuredMemoryModel,
         vector_index: MemoryVectorIndex,
         localization_model: StructuredMemoryModel | None = None,
+        gap_detector: MemoryGapDetector | None = None,
     ) -> None:
         transcript_root.mkdir(parents=True, exist_ok=True)
         self._transcript_root = transcript_root.resolve(strict=True)
@@ -52,6 +57,7 @@ class TranscriptIngestionService:
         self._extraction_model = extraction_model
         self._vector_index = vector_index
         self._localization_model = localization_model
+        self._gap_detector = gap_detector or MemoryGapDetectionService(repository)
 
     def ingest(
         self,
@@ -156,6 +162,7 @@ class TranscriptIngestionService:
                         localization_model=self._localization_model,
                     )
                 )
+            gaps = self._gap_detector.detect_for_memories(memories)
             try:
                 index_results = []
                 for memory in memories:
@@ -183,11 +190,13 @@ class TranscriptIngestionService:
             filename=loaded.filename,
             segment_count=len(chunks),
             memory_count=len(memories),
+            gap_count=len(gaps),
             indexed_memory_count=sum(
                 result.indexed or result.content_hash is not None
                 for result in index_results
             ),
             memory_ids=[memory.memory_id for memory in memories],
+            gap_ids=[gap.gap_id for gap in gaps],
         )
 
     @staticmethod

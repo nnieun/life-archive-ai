@@ -108,6 +108,31 @@ class TwoMemoryExtractionModel:
         )
 
 
+class GapExtractionModel:
+    def invoke(self, _input: object) -> MemoryExtractionBatch:
+        evidence = (
+            "2001년 대구 동성로에서 친구들과 영화를 봤지만 "
+            "극장 이름은 기억나지 않는다."
+        )
+        return MemoryExtractionBatch(
+            memories=[
+                ExtractedMemory(
+                    title="동성로 영화관",
+                    summary=evidence,
+                    people=["친구"],
+                    location="대구 동성로",
+                    event_date="2001",
+                    date_precision=DatePrecision.YEAR,
+                    emotion=None,
+                    confidence=0.8,
+                    evidence_start_offset=0,
+                    evidence_end_offset=len(evidence),
+                    uncertainty_notes="극장 이름을 기억하지 못한다.",
+                )
+            ]
+        )
+
+
 @pytest.fixture
 def ingestion_storage(tmp_path: Path):
     database = SQLiteDatabase(tmp_path / "ingestion.sqlite3")
@@ -139,10 +164,40 @@ def test_txt_upload_is_immutable_and_indexes_extracted_memory(
     assert (raw_root / "memory.txt").read_bytes() == original
     assert result.segment_count == 1
     assert result.memory_count == 1
+    assert result.gap_count == 0
     assert result.indexed_memory_count == 1
     assert vector_index.memory_ids == result.memory_ids
     assert repository.get_transcript(result.transcript_id) is not None
     assert len(repository.list_memories(result.transcript_id)) == 1
+
+
+def test_upload_detects_gap_and_returns_gap_ids(tmp_path: Path) -> None:
+    content = (
+        "2001년 대구 동성로에서 친구들과 영화를 봤지만 "
+        "극장 이름은 기억나지 않는다."
+    )
+    database = SQLiteDatabase(tmp_path / "gap-ingestion.sqlite3")
+    database.initialize()
+    repository = SQLiteRepository(database)
+    vector_index = VectorIndex()
+    service = TranscriptIngestionService(
+        tmp_path / "raw" / "transcripts",
+        repository,
+        GapExtractionModel(),
+        vector_index,  # type: ignore[arg-type]
+    )
+
+    result = service.ingest(
+        filename="unknown-cinema.txt",
+        content=content.encode("utf-8"),
+        language="ko",
+    )
+
+    assert result.memory_count == 1
+    assert result.gap_count == 1
+    assert len(result.gap_ids) == 1
+    assert repository.get_memory_gap(result.gap_ids[0]) is not None
+    database.close()
 
 
 def test_existing_raw_filename_is_not_overwritten(ingestion_storage) -> None:

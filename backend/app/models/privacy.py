@@ -12,6 +12,7 @@ class SQLiteTranscriptDeletion(BaseModel):
     memory_ids: list[str]
     deleted_segment_count: int = Field(ge=0)
     deleted_memory_count: int = Field(ge=0)
+    dismissed_gap_count: int = Field(default=0, ge=0)
     invalidated_conversation_message_count: int = Field(ge=0)
     invalidated_autobiography_count: int = Field(ge=0)
 
@@ -24,6 +25,7 @@ class TranscriptDeletionResult(BaseModel):
     transcript_id: str
     deleted_segment_count: int = Field(ge=0)
     deleted_memory_count: int = Field(ge=0)
+    dismissed_gap_count: int = Field(default=0, ge=0)
     deleted_vector_count: int = Field(ge=0)
     bm25_memory_count: int = Field(ge=0)
     invalidated_conversation_message_count: int = Field(ge=0)

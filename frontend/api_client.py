@@ -39,14 +39,17 @@ class IngestionResult(ApiModel):
     filename: str
     segment_count: int
     memory_count: int
+    gap_count: int = 0
     indexed_memory_count: int
     memory_ids: list[str]
+    gap_ids: list[str] = Field(default_factory=list)
 
 
 class TranscriptDeletionResult(ApiModel):
     transcript_id: str
     deleted_segment_count: int
     deleted_memory_count: int
+    dismissed_gap_count: int = 0
     deleted_vector_count: int
     bm25_memory_count: int
     invalidated_conversation_message_count: int

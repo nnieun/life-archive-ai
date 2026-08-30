@@ -7,6 +7,15 @@ import sqlite3
 from datetime import UTC, datetime
 from typing import Any
 
+from backend.app.models.gap import (
+    MemoryGapCandidateCreate,
+    MemoryGapCandidateRecord,
+    MemoryGapCandidateStatus,
+    MemoryGapCreate,
+    MemoryGapRecord,
+    MemoryGapStatus,
+    MemoryGapUpdate,
+)
 from backend.app.models.transcript import LoadedTranscript
 from backend.app.models.privacy import SQLiteTranscriptDeletion
 from backend.app.storage.database import SQLiteDatabase
@@ -115,6 +124,23 @@ def _memory_record(row: sqlite3.Row) -> MemoryRecord:
 
 def _memory_source_record(row: sqlite3.Row) -> MemorySourceRecord:
     return MemorySourceRecord.model_validate(dict(row))
+
+
+def _memory_gap_record(row: sqlite3.Row) -> MemoryGapRecord:
+    data = dict(row)
+    data["people"] = json.loads(data.pop("people_json"))
+    data["user_clues"] = json.loads(data.pop("user_clues_json"))
+    data["web_search_consent"] = bool(data["web_search_consent"])
+    return MemoryGapRecord.model_validate(data)
+
+
+def _memory_gap_candidate_record(row: sqlite3.Row) -> MemoryGapCandidateRecord:
+    data = dict(row)
+    data["supporting_source_ids"] = json.loads(
+        data.pop("supporting_source_ids_json")
+    )
+    data["external_sources"] = json.loads(data.pop("external_sources_json"))
+    return MemoryGapCandidateRecord.model_validate(data)
 
 
 def _session_record(row: sqlite3.Row) -> ConversationSessionRecord:
@@ -312,6 +338,14 @@ class SQLiteRepository:
                 "WHERE transcript_id = ? AND deleted_at IS NULL",
                 (timestamp, timestamp, transcript_id),
             )
+            gap_cursor = connection.execute(
+                "UPDATE memory_gaps SET status = 'DISMISSED', "
+                "resolved_at = COALESCE(resolved_at, ?), updated_at = ? "
+                "WHERE memory_id IN ("
+                "SELECT memory_id FROM memories WHERE transcript_id = ?"
+                ") AND status NOT IN ('RESOLVED', 'DISMISSED')",
+                (timestamp, timestamp, transcript_id),
+            )
             memory_cursor = connection.execute(
                 "UPDATE memories SET status = 'deleted', "
                 "deleted_at = ?, updated_at = ? "
@@ -349,6 +383,7 @@ class SQLiteRepository:
             memory_ids=memory_ids,
             deleted_segment_count=segment_cursor.rowcount,
             deleted_memory_count=memory_cursor.rowcount,
+            dismissed_gap_count=gap_cursor.rowcount,
             invalidated_conversation_message_count=len(message_ids),
             invalidated_autobiography_count=len(autobiography_ids),
         )
@@ -899,6 +934,230 @@ class SQLiteRepository:
                 (memory_source_id,),
             )
         return cursor.rowcount == 1
+
+    def create_memory_gap(self, gap: MemoryGapCreate) -> MemoryGapRecord:
+        """Persist one detected gap without modifying its source memory."""
+
+        if gap.memory_id is not None and self.get_memory(gap.memory_id) is None:
+            raise StorageIntegrityError("Memory gap requires an active memory")
+        timestamp = _now_iso()
+        try:
+            with self._database.transaction() as connection:
+                connection.execute(
+                    """
+                    INSERT INTO memory_gaps (
+                        gap_id, memory_id, gap_type, clue_text, missing_field,
+                        period_start, period_end, location, people_json,
+                        confidence, importance_score, status, source_type,
+                        source_id, web_search_consent, user_clues_json,
+                        resolved_candidate_id, resolved_memory_id,
+                        created_at, updated_at, resolved_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                              NULL, NULL, ?, ?, NULL)
+                    """,
+                    (
+                        gap.gap_id,
+                        gap.memory_id,
+                        gap.gap_type.value,
+                        gap.clue_text,
+                        gap.missing_field,
+                        gap.period_start,
+                        gap.period_end,
+                        gap.location,
+                        _json_dump(gap.people),
+                        gap.confidence,
+                        gap.importance_score,
+                        gap.status.value,
+                        gap.source_type.value,
+                        gap.source_id,
+                        int(gap.web_search_consent),
+                        _json_dump(gap.user_clues),
+                        timestamp,
+                        timestamp,
+                    ),
+                )
+        except sqlite3.IntegrityError as exception:
+            raise _translate_integrity(exception) from exception
+        record = self.get_memory_gap(gap.gap_id)
+        if record is None:
+            raise StorageError("Memory gap was not persisted")
+        return record
+
+    def get_memory_gap(self, gap_id: str) -> MemoryGapRecord | None:
+        with self._database.transaction() as connection:
+            row = connection.execute(
+                "SELECT * FROM memory_gaps WHERE gap_id = ?",
+                (gap_id,),
+            ).fetchone()
+        return _memory_gap_record(row) if row is not None else None
+
+    def list_memory_gaps(
+        self,
+        *,
+        statuses: set[MemoryGapStatus] | None = None,
+        memory_id: str | None = None,
+    ) -> list[MemoryGapRecord]:
+        clauses: list[str] = []
+        values: list[Any] = []
+        if statuses is not None:
+            if not statuses:
+                return []
+            placeholders = ", ".join("?" for _ in statuses)
+            clauses.append(f"status IN ({placeholders})")
+            values.extend(status.value for status in sorted(statuses))
+        if memory_id is not None:
+            clauses.append("memory_id = ?")
+            values.append(memory_id)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        with self._database.transaction() as connection:
+            rows = connection.execute(
+                f"SELECT * FROM memory_gaps {where} "
+                "ORDER BY importance_score DESC, created_at, gap_id",
+                values,
+            ).fetchall()
+        return [_memory_gap_record(row) for row in rows]
+
+    def update_memory_gap(
+        self,
+        gap_id: str,
+        update: MemoryGapUpdate,
+    ) -> MemoryGapRecord:
+        fields = update.model_fields_set
+        if not fields:
+            record = self.get_memory_gap(gap_id)
+            if record is None:
+                raise StorageNotFoundError("Memory gap was not found")
+            return record
+
+        assignments: list[str] = []
+        values: list[Any] = []
+        for field in sorted(fields):
+            value = getattr(update, field)
+            if field == "status" and value is not None:
+                value = value.value
+            elif field == "web_search_consent" and value is not None:
+                value = int(value)
+            elif field == "user_clues" and value is not None:
+                value = _json_dump(value)
+            elif field == "resolved_at":
+                value = _datetime_iso(value)
+            column = "user_clues_json" if field == "user_clues" else field
+            assignments.append(f"{column} = ?")
+            values.append(value)
+        assignments.append("updated_at = ?")
+        values.extend((_now_iso(), gap_id))
+        try:
+            with self._database.transaction() as connection:
+                cursor = connection.execute(
+                    f"UPDATE memory_gaps SET {', '.join(assignments)} "
+                    "WHERE gap_id = ?",
+                    values,
+                )
+        except sqlite3.IntegrityError as exception:
+            raise _translate_integrity(exception) from exception
+        if cursor.rowcount != 1:
+            raise StorageNotFoundError("Memory gap was not found")
+        record = self.get_memory_gap(gap_id)
+        if record is None:
+            raise StorageNotFoundError("Memory gap was not found")
+        return record
+
+    def create_memory_gap_candidate(
+        self,
+        candidate: MemoryGapCandidateCreate,
+    ) -> MemoryGapCandidateRecord:
+        if self.get_memory_gap(candidate.gap_id) is None:
+            raise StorageIntegrityError("Candidate requires a memory gap")
+        timestamp = _now_iso()
+        try:
+            with self._database.transaction() as connection:
+                connection.execute(
+                    """
+                    INSERT INTO memory_gap_candidates (
+                        candidate_id, gap_id, value, explanation,
+                        deterministic_score, llm_relation,
+                        supporting_source_ids_json, external_sources_json,
+                        status, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        candidate.candidate_id,
+                        candidate.gap_id,
+                        candidate.value,
+                        candidate.explanation,
+                        candidate.deterministic_score,
+                        candidate.llm_relation.value,
+                        _json_dump(candidate.supporting_source_ids),
+                        _json_dump(
+                            [
+                                source.model_dump(mode="json")
+                                for source in candidate.external_sources
+                            ]
+                        ),
+                        candidate.status.value,
+                        timestamp,
+                        timestamp,
+                    ),
+                )
+        except sqlite3.IntegrityError as exception:
+            raise _translate_integrity(exception) from exception
+        record = self.get_memory_gap_candidate(candidate.candidate_id)
+        if record is None:
+            raise StorageError("Memory gap candidate was not persisted")
+        return record
+
+    def get_memory_gap_candidate(
+        self,
+        candidate_id: str,
+    ) -> MemoryGapCandidateRecord | None:
+        with self._database.transaction() as connection:
+            row = connection.execute(
+                "SELECT * FROM memory_gap_candidates WHERE candidate_id = ?",
+                (candidate_id,),
+            ).fetchone()
+        return _memory_gap_candidate_record(row) if row is not None else None
+
+    def list_memory_gap_candidates(
+        self,
+        gap_id: str,
+        *,
+        statuses: set[MemoryGapCandidateStatus] | None = None,
+    ) -> list[MemoryGapCandidateRecord]:
+        clauses = ["gap_id = ?"]
+        values: list[Any] = [gap_id]
+        if statuses is not None:
+            if not statuses:
+                return []
+            placeholders = ", ".join("?" for _ in statuses)
+            clauses.append(f"status IN ({placeholders})")
+            values.extend(status.value for status in sorted(statuses))
+        with self._database.transaction() as connection:
+            rows = connection.execute(
+                "SELECT * FROM memory_gap_candidates WHERE "
+                f"{' AND '.join(clauses)} "
+                "ORDER BY deterministic_score DESC, created_at, candidate_id",
+                values,
+            ).fetchall()
+        return [_memory_gap_candidate_record(row) for row in rows]
+
+    def update_memory_gap_candidate_status(
+        self,
+        candidate_id: str,
+        status: MemoryGapCandidateStatus,
+    ) -> MemoryGapCandidateRecord:
+        timestamp = _now_iso()
+        with self._database.transaction() as connection:
+            cursor = connection.execute(
+                "UPDATE memory_gap_candidates SET status = ?, updated_at = ? "
+                "WHERE candidate_id = ?",
+                (status.value, timestamp, candidate_id),
+            )
+        if cursor.rowcount != 1:
+            raise StorageNotFoundError("Memory gap candidate was not found")
+        record = self.get_memory_gap_candidate(candidate_id)
+        if record is None:
+            raise StorageNotFoundError("Memory gap candidate was not found")
+        return record
 
     def create_conversation_session(
         self,
