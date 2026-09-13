@@ -34,6 +34,7 @@ from backend.app.models.gap import (
     MemoryGapReconstructionResult,
     MemoryGapResolutionResult,
     MemoryGapSearchSource,
+    MemoryGapSearchSourceType,
     MemoryGapStatus,
     MemoryGapToolPayload,
     MemoryGapType,
@@ -442,6 +443,14 @@ class MemoryGapReconstructionService:
         drafts: list[MemoryGapCandidateCreate] = []
         seen_values: set[str] = set()
         for proposal in batch.candidates:
+            # A food-place gap must be filled from a web result, never by
+            # promoting generic local phrases such as “ate tteokbokki”.
+            if gap.missing_field == "food_place_name" and not any(
+                available[source_id].source_type is MemoryGapSearchSourceType.EXTERNAL
+                for source_id in proposal.supporting_source_ids
+                if source_id in available
+            ):
+                continue
             draft = _validated_candidate(gap, proposal, available)
             normalized_value = draft.value.casefold()
             if normalized_value not in seen_values:
