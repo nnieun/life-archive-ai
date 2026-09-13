@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from frontend.api_client import ApiClientError, MemoryGapCandidateData
+from frontend.api_client import ApiClientError, MemoryGapCandidateData, MemoryGapReconstructionResult
 from frontend.ui import get_api_client, show_backend_error
 
 GAP_LABELS = {
@@ -166,8 +166,13 @@ else:
             ):
                 with st.spinner("공개 웹에서 기억의 단서를 찾는 중입니다..."):
                     try:
-                        result = api_client.reconstruct_memory_gap(
-                            gap.gap_id, web_search_consent=True
+                        result = api_client._request(
+                            "POST",
+                            f"memory-gaps/{gap.gap_id}/reconstruct",
+                            MemoryGapReconstructionResult,
+                            error_message="Memory gap reconstruction failed",
+                            timeout_seconds=180.0,
+                            json={"web_search_consent": True},
                         )
                     except ApiClientError as exception:
                         show_backend_error("인터넷 단서 검색", exception)
