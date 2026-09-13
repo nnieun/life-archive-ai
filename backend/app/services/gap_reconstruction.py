@@ -206,7 +206,7 @@ class MemoryGapReconstructionService:
         self._models = models
         self.graph = self._build_graph()
 
-    def reconstruct(self, gap_id: str) -> MemoryGapReconstructionResult:
+    def reconstruct(self, gap_id: str, *, force_web_search: bool = False) -> MemoryGapReconstructionResult:
         """Find local evidence without changing the underlying memory."""
 
         gap = self._repository.get_memory_gap(gap_id)
@@ -219,7 +219,7 @@ class MemoryGapReconstructionService:
             gap_id,
             statuses={MemoryGapCandidateStatus.PROPOSED},
         )
-        if existing and gap.status is MemoryGapStatus.CANDIDATE_FOUND:
+        if existing and gap.status is MemoryGapStatus.CANDIDATE_FOUND and not force_web_search:
             return MemoryGapReconstructionResult(
                 gap=gap,
                 candidates=existing,
@@ -228,6 +228,11 @@ class MemoryGapReconstructionService:
                 message="이미 확인을 기다리는 복원 후보가 있습니다.",
             )
 
+        if force_web_search:
+            for candidate in existing:
+                self._repository.update_memory_gap_candidate_status(
+                    candidate.candidate_id, MemoryGapCandidateStatus.REJECTED
+                )
         self._repository.update_memory_gap(
             gap_id,
             MemoryGapUpdate(status=MemoryGapStatus.SEARCHING),

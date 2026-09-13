@@ -296,6 +296,8 @@ def reconstruct_memory_gap(
         if request.web_search_consent:
             repository = get_memory_repository()
             repository.update_memory_gap(gap_id, MemoryGapUpdate(web_search_consent=True))
+        if request.web_search_consent:
+            return service.reconstruct(gap_id, force_web_search=True)
         return service.reconstruct(gap_id)
     except MemoryGapReconstructionError as exception:
         raise _gap_http_error(exception) from exception
