@@ -639,11 +639,11 @@ def _validated_candidate(
 
     evidence = proposal.evidence_text
     value = proposal.value.strip()
-    if value not in evidence:
+    if not _contains_text(evidence, value):
         raise MemoryGapCandidateOutputError(
             "Candidate value was not found in its evidence quote"
         )
-    if not any(evidence in source.content for source in selected_sources):
+    if not any(_contains_text(source.content, evidence) for source in selected_sources):
         raise MemoryGapCandidateOutputError(
             "Candidate evidence quote was not found in cited sources"
         )
@@ -668,6 +668,13 @@ def _validated_candidate(
         llm_relation=proposal.llm_relation,
         supporting_source_ids=proposal.supporting_source_ids,
     )
+
+
+def _contains_text(source: str, value: str) -> bool:
+    """Accept harmless whitespace differences without accepting paraphrases."""
+    if value in source:
+        return True
+    return " ".join(source.split()).find(" ".join(value.split())) >= 0
 
 
 def _deterministic_candidate_score(
