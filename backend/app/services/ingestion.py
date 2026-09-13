@@ -164,10 +164,10 @@ class TranscriptIngestionService:
                 )
             gaps = self._gap_detector.detect_for_memories(memories)
             try:
-                index_results = []
-                for memory in memories:
-                    index_results.append(self._vector_index.index_memory(memory.memory_id))
-                    indexed_memory_ids.append(memory.memory_id)
+                # Failed batches may have persisted vectors; register all IDs
+                # before attempting writes so rollback also removes those.
+                indexed_memory_ids.extend(memory.memory_id for memory in memories)
+                index_results = self._vector_index.index_memories(indexed_memory_ids)
             except Exception as exception:
                 raise IngestionError("Memory index update failed") from exception
         except TranscriptLoadError as exception:
@@ -220,11 +220,10 @@ class TranscriptIngestionService:
     ) -> None:
         """Undo everything a failed ingest may have done, including Chroma.
 
-        ``index_memory`` writes vectors one memory at a time, so a failure
-        partway through the loop leaves earlier vectors committed to Chroma.
+        Batch writes can fail after some vectors have reached Chroma.
         Once ``delete_transcript`` hard-deletes the SQLite rows there is no
         way to rediscover those memory_ids from the database, so the caller
-        must hand back exactly the ids it already indexed before cleanup runs.
+        must hand back every attempted ID before cleanup runs.
         """
         for memory_id in indexed_memory_ids:
             try:

@@ -242,6 +242,7 @@ class GroundedQAService:
                     transcript_id=hit.memory.transcript_id,
                     title=hit.memory.title,
                     summary=hit.memory.summary,
+                    emotion=hit.memory.emotion,
                     people=hit.memory.people,
                     location=hit.memory.location,
                     event_date=hit.memory.event_date,
@@ -524,6 +525,7 @@ class GroundedQAService:
             [
                 item.title,
                 item.summary,
+                item.emotion or "",
                 item.location or "",
                 item.event_date or "",
                 item.uncertainty_notes or "",

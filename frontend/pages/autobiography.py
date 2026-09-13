@@ -20,7 +20,7 @@ def _render_result(result: AutobiographyResult) -> None:
     ):
         st.header(f"{index}장. {chapter.title}")
         st.write(chapter.content)
-        render_citations(chapter.citations)
+        render_citations(chapter.citations, scope=f"autobiography-{index}")
 
 
 def _generate(payload: dict[str, Any], *, proceed: bool) -> AutobiographyResult | None:

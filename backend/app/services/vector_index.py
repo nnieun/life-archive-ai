@@ -19,6 +19,7 @@ from backend.app.models.vector import (
     MemoryVectorSearchHit,
 )
 from backend.app.storage.models import MemoryRecord
+from backend.app.services.memory_text import memory_search_text
 from backend.app.storage.repository import SQLiteRepository
 
 DEFAULT_COLLECTION_NAME = "life_archive_memories"
@@ -139,6 +140,51 @@ class MemoryVectorIndex:
 
         return self.index_memory(memory_id, force=True)
 
+    def index_memories(
+        self, memory_ids: list[str], *, batch_size: int = 64,
+    ) -> list[MemoryIndexResult]:
+        """Embed changed memories in bounded batches."""
+        if batch_size < 1:
+            raise ValueError("batch_size must be positive")
+        results: dict[str, MemoryIndexResult] = {}
+        pending: list[tuple[str, str, str]] = []
+        unique_ids = list(dict.fromkeys(memory_ids))
+        for memory_id in unique_ids:
+            memory = self._repository.get_memory(memory_id)
+            if memory is None:
+                results[memory_id] = MemoryIndexResult(
+                    memory_id=memory_id, deleted=self.delete_memory(memory_id),
+                )
+                continue
+            content = _index_content(memory)
+            digest = _content_hash(content)
+            metadata = self.get_metadata(memory_id)
+            if (metadata is not None and metadata.content_hash == digest
+                    and metadata.embedding_version == self._embedding_version):
+                results[memory_id] = MemoryIndexResult(
+                    memory_id=memory_id, content_hash=digest,
+                )
+            else:
+                pending.append((memory_id, content, digest))
+        for start in range(0, len(pending), batch_size):
+            batch = pending[start:start + batch_size]
+            vectors = self._embeddings.embed_documents([row[1] for row in batch])
+            if len(vectors) != len(batch) or any(not vector for vector in vectors):
+                raise ValueError("Embedding provider returned an invalid batch")
+            self._collection.upsert(
+                ids=[row[0] for row in batch], embeddings=vectors,
+                documents=[row[1] for row in batch],
+                metadatas=[MemoryIndexMetadata(
+                    memory_id=row[0], content_hash=row[2],
+                    embedding_version=self._embedding_version,
+                ).model_dump() for row in batch],
+            )
+            for memory_id, _, digest in batch:
+                results[memory_id] = MemoryIndexResult(
+                    memory_id=memory_id, content_hash=digest, indexed=True,
+                )
+        return [results[memory_id] for memory_id in unique_ids]
+
     def sync_from_sqlite(self) -> list[MemoryIndexResult]:
         """Index active records and delete vectors absent from active SQLite data."""
 
@@ -148,7 +194,7 @@ class MemoryVectorIndex:
         stale_ids = sorted(indexed_ids - active_ids)
         if stale_ids:
             self._collection.delete(ids=stale_ids)
-        return [self.index_memory(memory.memory_id) for memory in memories]
+        return self.index_memories([memory.memory_id for memory in memories])
 
     def rebuild_from_sqlite(self) -> list[MemoryIndexResult]:
         """Drop the disposable collection and rebuild it from active SQLite rows."""
@@ -199,9 +245,19 @@ class MemoryVectorIndex:
         query_vector = self._embeddings.embed_query(query)
         if not query_vector:
             raise ValueError("Embedding provider returned an empty query vector")
+        candidate_count = min(top_k, vector_count)
+        while True:
+            hits = self._search_candidates(query_vector, candidate_count, top_k)
+            if len(hits) >= top_k or candidate_count >= vector_count:
+                return hits
+            candidate_count = min(vector_count, candidate_count * 2)
+
+    def _search_candidates(
+        self, query_vector: list[float], candidate_count: int, top_k: int,
+    ) -> list[MemoryVectorSearchHit]:
         result = self._collection.query(
             query_embeddings=[query_vector],
-            n_results=min(top_k, vector_count),
+            n_results=candidate_count,
             include=["metadatas", "distances"],
         )
 
@@ -246,7 +302,7 @@ class MemoryVectorIndex:
 def _index_content(memory: MemoryRecord) -> str:
     """Return the intentionally small, deterministic text embedded for retrieval."""
 
-    return f"{memory.title.strip()}\n{memory.summary.strip()}"
+    return memory_search_text(memory)
 
 
 def _content_hash(content: str) -> str:

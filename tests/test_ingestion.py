@@ -52,6 +52,9 @@ class ExtractionModel:
 
 
 class VectorIndex:
+    def index_memories(self, memory_ids: list[str]) -> list[MemoryIndexResult]:
+        return [self.index_memory(memory_id) for memory_id in memory_ids]
+
     def __init__(self) -> None:
         self.memory_ids: list[str] = []
         self.deleted_memory_ids: list[str] = []

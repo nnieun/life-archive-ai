@@ -3,6 +3,7 @@
 import streamlit as st
 
 from frontend.api_client import ApiClientError
+from frontend.privacy_state import clear_derived_state
 from frontend.ui import get_api_client, show_backend_error
 
 st.title("구조화된 기억")
@@ -35,7 +36,11 @@ else:
                         line_label = f"{start_line}번째 줄"
                     else:
                         line_label = f"{start_line}~{end_line}번째 줄"
-                    st.caption(f"원문 위치: {line_label}")
+                    location_label = (
+                        "PDF 추출 텍스트 위치" if item.source_filename.lower().endswith(".pdf")
+                        else "원문 위치"
+                    )
+                    st.caption(f"{location_label}: {line_label}")
             precision_labels = {
                 "exact": "정확한 날짜와 시간",
                 "day": "일 단위까지 확인",
@@ -77,6 +82,7 @@ else:
                     except ApiClientError as exception:
                         show_backend_error("기억 삭제", exception)
                     else:
+                        clear_derived_state(st.session_state)
                         st.success(
                             f"{result.deleted_memory_count}개의 기억을 삭제했습니다. "
                             "원본 파일은 보존됩니다."

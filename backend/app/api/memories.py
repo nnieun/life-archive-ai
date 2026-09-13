@@ -47,6 +47,7 @@ from backend.app.services.memory_extraction import (
     build_openai_memory_model,
 )
 from backend.app.services.vector_index import MemoryVectorIndex
+from backend.app.services.source_lines import original_line_number
 from backend.app.storage.database import SQLiteDatabase
 from backend.app.storage.models import MemoryRecord
 from backend.app.storage.repository import SQLiteRepository, StorageError
@@ -113,9 +114,11 @@ def _memory_view(
                 segment_id=source.segment_id,
                 start_offset=source.start_offset,
                 end_offset=source.end_offset,
-                start_line=_line_number(transcript.normalized_content, source.start_offset),
-                end_line=_line_number(
-                    transcript.normalized_content,
+                start_line=original_line_number(
+                    transcript.raw_content, transcript.normalized_content, source.start_offset,
+                ),
+                end_line=original_line_number(
+                    transcript.raw_content, transcript.normalized_content,
                     max(source.end_offset - 1, source.start_offset),
                 ),
             )

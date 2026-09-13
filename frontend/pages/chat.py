@@ -16,13 +16,14 @@ if "chat_session_id" not in st.session_state:
 if "chat_messages" not in st.session_state:
     st.session_state.chat_messages = []
 
-for message in st.session_state.chat_messages:
+for message_index, message in enumerate(st.session_state.chat_messages):
     with st.chat_message(message["role"]):
         st.write(remove_internal_citation_markers(message["content"]))
         if message.get("citations"):
             render_citations(
                 message["citations"],
                 message.get("memory_labels"),
+                scope=f"chat-{message_index}",
             )
 
 question = st.chat_input("기억에 대해 질문해 보세요")
@@ -52,7 +53,10 @@ if question:
                     }
                 except ApiClientError:
                     pass
-                render_citations(result.citations, memory_labels)
+                render_citations(
+                    result.citations, memory_labels,
+                    scope=f"chat-{len(st.session_state.chat_messages)}",
+                )
                 st.session_state.chat_messages.append(
                     {
                         "role": "assistant",

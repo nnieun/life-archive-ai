@@ -22,6 +22,7 @@ class QAEvidence(QAModel):
     transcript_id: str
     title: str
     summary: str
+    emotion: str | None = None
     people: list[str] = Field(default_factory=list)
     location: str | None = None
     event_date: str | None = None

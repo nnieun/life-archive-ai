@@ -56,7 +56,8 @@ def api_client(monkeypatch) -> Mock:
 
 def _has_memory_citation_button(app: AppTest, memory_id: str) -> bool:
     return any(
-        button.key == f"open-memory-{memory_id}-0"
+        bool(button.key) and button.key.startswith("open-memory-")
+        and button.key.endswith(f"-{memory_id}")
         for button in app.button
     )
 
@@ -243,6 +244,13 @@ def test_chat_displays_answer_and_citation(api_client: Mock) -> None:
     assert "공원에서 만났습니다." in str(app)
     assert any("첫 만남" in button.label for button in app.button)
     assert _has_memory_citation_button(app, "mem_001")
+    app.chat_input[0].set_value("그 기억을 다시 알려줘").run()
+    assert not app.exception
+    citation_keys = [button.key for button in app.button
+                     if button.key and button.key.startswith("open-memory-")]
+    assert len(citation_keys) == len(set(citation_keys)) == 2
+    app.run()
+    assert not app.exception
 
 
 def test_timeline_displays_precision_and_citation(api_client: Mock) -> None:
