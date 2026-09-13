@@ -39,4 +39,4 @@ if st.button("처리 및 인덱싱", type="primary", disabled=uploaded_file is N
                 )
                 if st.button("기억 빈칸 확인", key="open-memory-gaps"):
                     st.switch_page("pages/gaps.py")
-            st.code(result.transcript_id)
+            st.caption(f"저장된 원본 파일: {result.filename}")
