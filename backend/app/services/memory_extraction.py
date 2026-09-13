@@ -230,6 +230,16 @@ def _resolve_evidence_text(
     if not evidence_text:
         raise MemoryExtractionOutputError("Memory evidence must contain source text")
     start_offset = segment.content.find(evidence_text)
+    matched_text = evidence_text
+    if start_offset < 0:
+        folded_source, source_map = _fold_whitespace(segment.content)
+        folded_quote, _ = _fold_whitespace(evidence_text)
+        folded_start = folded_source.find(folded_quote)
+        if folded_start >= 0 and folded_quote:
+            start_offset = source_map[folded_start]
+            end_index = folded_start + len(folded_quote) - 1
+            end_offset = source_map[end_index] + 1
+            matched_text = segment.content[start_offset:end_offset]
     if start_offset < 0:
         raise MemoryExtractionOutputError(
             "Memory evidence quote was not found in the transcript segment"
@@ -239,7 +249,7 @@ def _resolve_evidence_text(
     values.update(
         {
             "evidence_start_offset": start_offset,
-            "evidence_end_offset": start_offset + len(evidence_text),
+            "evidence_end_offset": start_offset + len(matched_text),
         }
     )
     try:
@@ -262,6 +272,24 @@ def _resolve_evidence_text(
         raise MemoryExtractionOutputError(
             "Model output did not match the memory schema"
         ) from exception
+
+
+def _fold_whitespace(value: str) -> tuple[str, list[int]]:
+    """Collapse whitespace while retaining indices into the original string."""
+    folded: list[str] = []
+    indices: list[int] = []
+    pending_space = False
+    for index, character in enumerate(value):
+        if character.isspace():
+            pending_space = bool(folded)
+            continue
+        if pending_space:
+            folded.append(" ")
+            indices.append(index - 1)
+        folded.append(character)
+        indices.append(index)
+        pending_space = False
+    return "".join(folded).strip(), indices
 
 
 def _resolve_candidates(
