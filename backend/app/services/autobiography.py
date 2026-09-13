@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import re
+
+import re
 from dataclasses import dataclass
 from typing import Any, Protocol, cast
 
@@ -665,7 +667,7 @@ def _content_from_drafts(
                     f"{source.start_offset}-{source.end_offset}]"
                 )
                 citations.append(source)
-            lines.append(f"{paragraph.text.strip()} {' '.join(markers)}")
+            lines.append(_remove_internal_citation_markers(paragraph.text.strip()))
         chapters.append(
             AutobiographyChapter(
                 title=draft.title,
@@ -674,6 +676,16 @@ def _content_from_drafts(
             )
         )
     return AutobiographyContent(chapters=chapters)
+
+
+_INTERNAL_CITATION_MARKER = re.compile(
+    r"\s*\[mem_[^\]|\s]+\|tr_[^:\]\s]+:\d+-\d+\]"
+)
+
+
+def _remove_internal_citation_markers(text: str) -> str:
+    """Keep citations as structured data, never as user-facing prose."""
+    return _INTERNAL_CITATION_MARKER.sub("", text).strip()
 
 
 def _deduplicate_citations(

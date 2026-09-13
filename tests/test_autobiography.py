@@ -222,7 +222,8 @@ def test_generates_one_grounded_chapter_and_saves_completed_record(
     assert result.autobiography.status is AutobiographyStatus.COMPLETED
     assert len(result.autobiography.content.chapters) == 1
     chapter = result.autobiography.content.chapters[0]
-    assert "[mem_childhood|tr_001:0-20]" in chapter.content
+    assert "[mem_childhood|tr_001:0-20]" not in chapter.content
+    assert chapter.citations[0].memory_id == "mem_childhood"
     assert chapter.citations[0].memory_id == "mem_childhood"
     assert result.autobiography == repository.get_autobiography("autobio_one")
 

@@ -20,6 +20,11 @@ else:
 
     selected_memory_id = st.session_state.pop("selected_memory_id", None)
     shown_transcripts: set[str] = set()
+    if selected_memory_id:
+        memories = sorted(
+            memories,
+            key=lambda item: item.memory.memory_id != selected_memory_id,
+        )
     for item in memories:
         memory = item.memory
         with st.expander(

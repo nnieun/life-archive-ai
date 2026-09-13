@@ -8,19 +8,32 @@ import streamlit as st
 
 from frontend.api_client import ApiClientError, AutobiographyResult
 from frontend.citations import render_citations
+from frontend.autobiography_export import build_docx
 from frontend.ui import get_api_client, show_backend_error
 
 
 def _render_result(result: AutobiographyResult) -> None:
     if result.error and not result.requires_gap_confirmation:
         st.warning(result.error)
+    chapters = result.autobiography.content.chapters
     for index, chapter in enumerate(
-        result.autobiography.content.chapters,
+        chapters,
         start=1,
     ):
         st.header(f"{index}장. {chapter.title}")
         st.write(chapter.content)
         render_citations(chapter.citations, scope=f"autobiography-{index}")
+    docx = build_docx(
+        result.autobiography.title,
+        [(f"{index}장. {chapter.title}", chapter.content)
+         for index, chapter in enumerate(chapters, start=1)],
+    )
+    st.download_button(
+        "자서전 DOCX로 저장",
+        data=docx,
+        file_name="나의_자서전.docx",
+        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
 
 
 def _generate(payload: dict[str, Any], *, proceed: bool) -> AutobiographyResult | None:
