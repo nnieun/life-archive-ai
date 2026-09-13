@@ -102,7 +102,10 @@ else:
                     f"근거 관계: {RELATION_LABELS.get(selected.llm_relation, '확인 필요')}"
                     f" · 연결된 내부 근거 {len(selected.supporting_source_ids)}개"
                 )
-                for source in selected.external_sources:
+                # Streamlit may retain an older page module during hot reload.
+                # Keep rendering compatible with candidates returned before
+                # external-source support was added.
+                for source in getattr(selected, "external_sources", []):
                     url = source.get("url")
                     title = source.get("title") or source.get("source_domain") or "외부 출처"
                     if isinstance(url, str) and url.startswith(("http://", "https://")):
