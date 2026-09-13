@@ -297,14 +297,25 @@ def _resolve_candidates(
     segment: TranscriptSegmentRecord,
 ) -> list[ExtractedMemory]:
     candidates: list[ExtractedMemory] = []
+    skipped_evidence_error: MemoryExtractionOutputError | None = None
     for raw_candidate in batch.memories:
-        candidate = (
-            _resolve_evidence_text(raw_candidate, segment)
-            if isinstance(raw_candidate, MemoryExtractionProposal)
-            else _normalize_evidence_offsets(raw_candidate, segment)
-        )
+        try:
+            candidate = (
+                _resolve_evidence_text(raw_candidate, segment)
+                if isinstance(raw_candidate, MemoryExtractionProposal)
+                else _normalize_evidence_offsets(raw_candidate, segment)
+            )
+        except MemoryExtractionOutputError as exception:
+            if "evidence quote was not found" not in str(exception):
+                raise
+            # Do not let one hallucinated proposal discard grounded proposals
+            # from the same batch. Never store this untraceable candidate.
+            skipped_evidence_error = exception
+            continue
         _validate_evidence(candidate, segment)
         candidates.append(candidate)
+    if not candidates and skipped_evidence_error is not None:
+        raise skipped_evidence_error
     return candidates
 
 
