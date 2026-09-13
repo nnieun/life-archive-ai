@@ -48,6 +48,9 @@ _DATE_CONTEXT = re.compile(
 _UNCERTAINTY = re.compile(
     rf"(?:{_UNKNOWN_WORDS})|아마|아마도|확실하지|잘\s*모르|같기도|듯하"
 )
+_FOOD_PLACE_CLUE = re.compile(
+    r"(?:떡볶이|분식|김밥|라면|순대).{0,32}(?:먹|집|가게|포장)",
+)
 
 
 class MemoryGapDetector(Protocol):
@@ -141,6 +144,16 @@ class MemoryGapDetectionService:
             if value
         )
         signals: list[_GapSignal] = []
+
+        if _FOOD_PLACE_CLUE.search(text):
+            signals.append(
+                _GapSignal(
+                    MemoryGapType.MISSING_LOCATION,
+                    "food_place_name",
+                    0.78,
+                    0.82,
+                )
+            )
 
         if _SPECIFIC_LOCATION_UNKNOWN.search(text):
             signals.append(
