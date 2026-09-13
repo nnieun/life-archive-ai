@@ -355,7 +355,7 @@ class MemoryGapReconstructionService:
         if searched_count >= len(_TOOL_SEQUENCE):
             raise MemoryGapAgentPolicyError("Agent requested an extra tool call")
         allowed_sequence = (
-            ("search_web",)
+            ("search_memory", "search_uploaded_documents", "search_web")
             if state["web_search_only"]
             else tuple(
                 tool_name
@@ -364,7 +364,13 @@ class MemoryGapReconstructionService:
             )
         )
         expected = allowed_sequence[searched_count]
-        if name != expected:
+        if state["web_search_only"] and name in {
+            "search_memory",
+            "search_uploaded_documents",
+            "search_web",
+        }:
+            pass
+        elif name != expected:
             raise MemoryGapAgentPolicyError(
                 f"Agent must call {expected} before {name}"
             )
