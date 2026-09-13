@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from typing import Annotated, Protocol
+from urllib.parse import urlparse
+
+from duckduckgo_search import DDGS
 
 from langchain.tools import ToolRuntime, tool
 from langchain_core.tools import BaseTool
@@ -61,7 +64,6 @@ def build_memory_gap_tools(
     ) -> str:
         """Search immutable uploaded transcript chunks; returns no local file paths."""
 
-        del runtime
         query_tokens = set(tokenize_for_bm25(query))
         ranked: list[tuple[float, str, MemoryGapSearchSource]] = []
         for transcript in repository.list_transcripts():
@@ -83,6 +85,36 @@ def build_memory_gap_tools(
             tool_name="search_uploaded_documents",
             query=query,
             sources=[item[2] for item in ranked[:top_k]],
+        ).model_dump_json()
+
+    @tool("search_web")
+    def search_web(
+        query: Annotated[str, Field(min_length=1, max_length=500)],
+        runtime: ToolRuntime,
+        top_k: Annotated[int, Field(ge=1, le=5)] = 5,
+    ) -> str:
+        """Search public web pages; results remain unconfirmed candidates."""
+        if not runtime.state.get("web_search_consent", False):
+            return MemoryGapToolPayload(
+                tool_name="search_web", query=query, sources=[]
+            ).model_dump_json()
+        sources = []
+        with DDGS() as client:
+            for item in client.text(query, max_results=top_k):
+                url = item.get("href") or item.get("url")
+                if not url:
+                    continue
+                sources.append(MemoryGapSearchSource(
+                    source_id=f"web:{url}",
+                    source_type=MemoryGapSearchSourceType.EXTERNAL,
+                    title=item.get("title") or url,
+                    content=item.get("body") or item.get("title") or url,
+                    score=0.5,
+                    url=url,
+                    source_domain=urlparse(url).netloc,
+                ))
+        return MemoryGapToolPayload(
+            tool_name="search_web", query=query, sources=sources,
         ).model_dump_json()
 
     @tool("search_memory_gaps")
@@ -147,6 +179,7 @@ def build_memory_gap_tools(
     return (
         search_memory,
         search_uploaded_documents,
+        search_web,
         search_memory_gaps,
         request_more_clues,
     )

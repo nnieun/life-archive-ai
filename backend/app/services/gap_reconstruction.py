@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import UTC, datetime
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Annotated, Any, Protocol, TypedDict, TypeVar, cast
@@ -24,6 +25,7 @@ from pydantic import BaseModel, ValidationError
 
 from backend.app.models.gap import (
     MemoryGapCandidateCreate,
+    ExternalSource,
     MemoryGapCandidateProposal,
     MemoryGapCandidateProposalBatch,
     MemoryGapCandidateRecord,
@@ -66,6 +68,7 @@ MAX_REQUEST_MORE_CLUES = 2
 _TOOL_SEQUENCE = (
     "search_memory",
     "search_uploaded_documents",
+    "search_web",
     "search_memory_gaps",
     "request_more_clues",
 )
@@ -102,6 +105,7 @@ class MemoryGapGraphState(TypedDict):
     request_more_clues_count: int
     needs_more_clues: bool
     user_question: str | None
+    web_search_consent: bool
 
 
 class MemoryGapReconstructionError(RuntimeError):
@@ -240,6 +244,7 @@ class MemoryGapReconstructionService:
             "request_more_clues_count": 0,
             "needs_more_clues": False,
             "user_question": None,
+            "web_search_consent": gap.web_search_consent,
         }
         try:
             final = cast(
@@ -339,7 +344,12 @@ class MemoryGapReconstructionService:
         searched_count = len(state["searched_tools"])
         if searched_count >= len(_TOOL_SEQUENCE):
             raise MemoryGapAgentPolicyError("Agent requested an extra tool call")
-        expected = _TOOL_SEQUENCE[searched_count]
+        allowed_sequence = tuple(
+            tool_name
+            for tool_name in _TOOL_SEQUENCE
+            if tool_name != "search_web" or state["web_search_consent"]
+        )
+        expected = allowed_sequence[searched_count]
         if name != expected:
             raise MemoryGapAgentPolicyError(
                 f"Agent must call {expected} before {name}"
@@ -667,6 +677,18 @@ def _validated_candidate(
         ),
         llm_relation=proposal.llm_relation,
         supporting_source_ids=proposal.supporting_source_ids,
+        external_sources=[
+            ExternalSource(
+                url=source.url,
+                title=source.title,
+                source_domain=source.source_domain or "외부 검색",
+                published_date=source.published_date,
+                snippet=source.content,
+                retrieved_at=datetime.now(UTC),
+            )
+            for source in selected_sources
+            if source.url and source.source_domain
+        ],
     )
 
 

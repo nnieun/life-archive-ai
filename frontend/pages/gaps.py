@@ -102,6 +102,11 @@ else:
                     f"근거 관계: {RELATION_LABELS.get(selected.llm_relation, '확인 필요')}"
                     f" · 연결된 내부 근거 {len(selected.supporting_source_ids)}개"
                 )
+                for source in selected.external_sources:
+                    url = source.get("url")
+                    title = source.get("title") or source.get("source_domain") or "외부 출처"
+                    if isinstance(url, str) and url.startswith(("http://", "https://")):
+                        st.link_button(f"외부 출처: {title}", url)
                 confirmed = st.checkbox(
                     "이 후보를 내 기억에 반영하는 데 동의합니다.",
                     key=f"gap-confirm-{gap.gap_id}",
@@ -128,7 +133,7 @@ else:
             else:
                 st.info("아직 확인할 후보가 없습니다.")
 
-            search_col, skip_col = st.columns(2)
+            search_col, web_col, skip_col = st.columns(3)
             if search_col.button(
                 "저장된 기록에서 후보 찾기",
                 key=f"gap-search-{gap.gap_id}",
@@ -144,6 +149,27 @@ else:
                             st.session_state["memory_gap_question"] = (
                                 result.user_question
                             )
+                        st.rerun()
+
+            web_consent = web_col.checkbox(
+                "인터넷 검색에 사용",
+                key=f"gap-web-consent-{gap.gap_id}",
+                help="기억의 단서를 공개 웹 검색어로 사용합니다.",
+            )
+            if web_col.button(
+                "인터넷에서 단서 찾기",
+                key=f"gap-web-search-{gap.gap_id}",
+                disabled=not web_consent,
+            ):
+                with st.spinner("공개 웹에서 기억의 단서를 찾는 중입니다..."):
+                    try:
+                        result = api_client.reconstruct_memory_gap(
+                            gap.gap_id, web_search_consent=True
+                        )
+                    except ApiClientError as exception:
+                        show_backend_error("인터넷 단서 검색", exception)
+                    else:
+                        st.session_state["memory_gap_notice"] = result.message
                         st.rerun()
 
             skip_confirmed = skip_col.checkbox(

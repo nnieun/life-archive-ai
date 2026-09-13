@@ -106,6 +106,7 @@ class MemoryGapCandidateData(ApiModel):
     llm_relation: str
     supporting_source_ids: list[str] = Field(default_factory=list)
     status: str
+    external_sources: list[dict[str, object]] = Field(default_factory=list)
 
 
 class MemoryGapView(ApiModel):
@@ -366,6 +367,8 @@ class LifeArchiveApiClient:
     def reconstruct_memory_gap(
         self,
         gap_id: str,
+        *,
+        web_search_consent: bool = False,
     ) -> MemoryGapReconstructionResult:
         return MemoryGapReconstructionResult.model_validate(
             self._request(
@@ -374,6 +377,7 @@ class LifeArchiveApiClient:
                 MemoryGapReconstructionResult,
                 error_message="Memory gap reconstruction failed",
                 timeout_seconds=INGEST_TIMEOUT_SECONDS,
+                json={"web_search_consent": web_search_consent},
             )
         )
 

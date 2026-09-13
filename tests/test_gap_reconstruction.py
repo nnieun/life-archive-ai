@@ -245,6 +245,7 @@ def test_agent_searches_memory_and_persists_only_grounded_candidate(
     assert [tool.name for tool in build_memory_gap_tools(repository, retriever)] == [
         "search_memory",
         "search_uploaded_documents",
+        "search_web",
         "search_memory_gaps",
         "request_more_clues",
     ]

@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from functools import lru_cache
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from backend.app.api.memories import get_memory_repository
@@ -52,6 +52,10 @@ class MemoryGapView(BaseModel):
 
     gap: MemoryGapRecord
     candidates: list[MemoryGapCandidateRecord]
+
+
+class MemoryGapReconstructionRequest(BaseModel):
+    web_search_consent: bool = False
 
 
 class MemoryGapListResponse(BaseModel):
@@ -283,11 +287,15 @@ def get_memory_gap(
 )
 def reconstruct_memory_gap(
     gap_id: str,
+    request: MemoryGapReconstructionRequest = Body(default_factory=MemoryGapReconstructionRequest),
     service: MemoryGapReconstructionService = Depends(
         get_memory_gap_reconstruction_service
     ),
 ) -> MemoryGapReconstructionResult:
     try:
+        if request.web_search_consent:
+            repository = get_memory_repository()
+            repository.update_memory_gap(gap_id, MemoryGapUpdate(web_search_consent=True))
         return service.reconstruct(gap_id)
     except MemoryGapReconstructionError as exception:
         raise _gap_http_error(exception) from exception

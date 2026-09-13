@@ -194,6 +194,9 @@ class MemoryGapSearchSource(GapModel):
     event_date: str | None = Field(default=None, min_length=1)
     location: str | None = Field(default=None, min_length=1)
     people: list[str] = Field(default_factory=list)
+    url: str | None = Field(default=None, pattern=r"^https?://")
+    source_domain: str | None = None
+    published_date: str | None = None
 
     @field_validator("title", "content", "event_date", "location")
     @classmethod
@@ -218,6 +221,7 @@ class MemoryGapToolPayload(GapModel):
     tool_name: Literal[
         "search_memory",
         "search_uploaded_documents",
+        "search_web",
         "search_memory_gaps",
         "request_more_clues",
     ]
