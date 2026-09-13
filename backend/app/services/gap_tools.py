@@ -32,12 +32,17 @@ def search_public_web(query: str, *, top_k: int = 5) -> list[MemoryGapSearchSour
             url = item.get("href") or item.get("url")
             if not url:
                 continue
+            title = item.get("title") or url
+            body = item.get("body") or ""
             sources.append(
                 MemoryGapSearchSource(
                     source_id=f"web:{url}",
                     source_type=MemoryGapSearchSourceType.EXTERNAL,
-                    title=item.get("title") or url,
-                    content=item.get("body") or item.get("title") or url,
+                    title=title,
+                    # Search engines often put the business name only in the
+                    # result title, so retain title and snippet together as
+                    # one verifiable evidence block.
+                    content=f"{title}\n{body}".strip(),
                     score=0.5,
                     url=url,
                     source_domain=urlparse(url).netloc,
