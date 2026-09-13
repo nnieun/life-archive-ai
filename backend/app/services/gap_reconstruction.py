@@ -107,6 +107,7 @@ class MemoryGapGraphState(TypedDict):
     needs_more_clues: bool
     user_question: str | None
     web_search_consent: bool
+    web_search_only: bool
 
 
 class MemoryGapReconstructionError(RuntimeError):
@@ -251,6 +252,9 @@ class MemoryGapReconstructionService:
             "needs_more_clues": False,
             "user_question": None,
             "web_search_consent": gap.web_search_consent,
+            "web_search_only": (
+                gap.web_search_consent and gap.missing_field == "food_place_name"
+            ),
         }
         try:
             final = cast(
@@ -350,10 +354,14 @@ class MemoryGapReconstructionService:
         searched_count = len(state["searched_tools"])
         if searched_count >= len(_TOOL_SEQUENCE):
             raise MemoryGapAgentPolicyError("Agent requested an extra tool call")
-        allowed_sequence = tuple(
-            tool_name
-            for tool_name in _TOOL_SEQUENCE
-            if tool_name != "search_web" or state["web_search_consent"]
+        allowed_sequence = (
+            ("search_web",)
+            if state["web_search_only"]
+            else tuple(
+                tool_name
+                for tool_name in _TOOL_SEQUENCE
+                if tool_name != "search_web" or state["web_search_consent"]
+            )
         )
         expected = allowed_sequence[searched_count]
         if name != expected:
