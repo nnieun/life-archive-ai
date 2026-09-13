@@ -364,6 +364,8 @@ class MemoryGapReconstructionService:
             "search_memory",
             "search_uploaded_documents",
             "search_web",
+            "search_memory_gaps",
+            "request_more_clues",
         }:
             pass
         elif name != expected:
