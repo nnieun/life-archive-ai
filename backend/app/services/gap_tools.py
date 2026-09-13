@@ -24,6 +24,28 @@ from backend.app.storage.repository import SQLiteRepository
 MAX_SEARCH_RESULTS = 10
 
 
+def search_public_web(query: str, *, top_k: int = 5) -> list[MemoryGapSearchSource]:
+    """Search public web pages for an explicit, user-approved query."""
+    sources: list[MemoryGapSearchSource] = []
+    with DDGS() as client:
+        for item in client.text(query, max_results=top_k):
+            url = item.get("href") or item.get("url")
+            if not url:
+                continue
+            sources.append(
+                MemoryGapSearchSource(
+                    source_id=f"web:{url}",
+                    source_type=MemoryGapSearchSourceType.EXTERNAL,
+                    title=item.get("title") or url,
+                    content=item.get("body") or item.get("title") or url,
+                    score=0.5,
+                    url=url,
+                    source_domain=urlparse(url).netloc,
+                )
+            )
+    return sources
+
+
 class GapMemoryRetriever(Protocol):
     """Minimal hybrid retrieval interface required by the memory tool."""
 
@@ -98,21 +120,7 @@ def build_memory_gap_tools(
             return MemoryGapToolPayload(
                 tool_name="search_web", query=query, sources=[]
             ).model_dump_json()
-        sources = []
-        with DDGS() as client:
-            for item in client.text(query, max_results=top_k):
-                url = item.get("href") or item.get("url")
-                if not url:
-                    continue
-                sources.append(MemoryGapSearchSource(
-                    source_id=f"web:{url}",
-                    source_type=MemoryGapSearchSourceType.EXTERNAL,
-                    title=item.get("title") or url,
-                    content=item.get("body") or item.get("title") or url,
-                    score=0.5,
-                    url=url,
-                    source_domain=urlparse(url).netloc,
-                ))
+        sources = search_public_web(query, top_k=top_k)
         return MemoryGapToolPayload(
             tool_name="search_web", query=query, sources=sources,
         ).model_dump_json()

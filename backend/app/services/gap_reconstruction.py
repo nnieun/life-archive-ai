@@ -58,6 +58,7 @@ from backend.app.services.corrections import (
     PreparedMemoryCorrection,
     UntraceableMemoryError,
 )
+from backend.app.services.gap_tools import search_public_web
 from backend.app.services.retrieval import tokenize_for_bm25
 from backend.app.storage.models import MemoryRecord
 from backend.app.storage.repository import SQLiteRepository
@@ -238,16 +239,18 @@ class MemoryGapReconstructionService:
             gap_id,
             MemoryGapUpdate(status=MemoryGapStatus.SEARCHING),
         )
+        web_query = _build_web_query(gap) if force_web_search else None
+        web_sources = search_public_web(web_query) if web_query else []
         initial: MemoryGapGraphState = {
             "gap_id": gap_id,
             "messages": [
                 SystemMessage(content=GAP_AGENT_SYSTEM_PROMPT),
                 HumanMessage(content=build_gap_agent_input(gap)),
             ],
-            "searched_tools": [],
-            "search_sources": [],
+            "searched_tools": ["search_web"] if force_web_search else [],
+            "search_sources": web_sources,
             "candidate_drafts": [],
-            "tool_call_count": 0,
+            "tool_call_count": 1 if force_web_search else 0,
             "request_more_clues_count": 0,
             "needs_more_clues": False,
             "user_question": None,
@@ -289,6 +292,8 @@ class MemoryGapReconstructionService:
             if candidates
             else "저장된 기록만으로 후보를 확인하지 못했습니다. 단서를 더 알려 주세요."
         )
+        if force_web_search:
+            message = f"인터넷 검색어: {web_query} (검색 결과 {len(web_sources)}개)\n" + message
         return MemoryGapReconstructionResult(
             gap=updated_gap,
             candidates=candidates,
@@ -716,6 +721,11 @@ def _validated_candidate(
             if source.url and source.source_domain
         ],
     )
+
+
+def _build_web_query(gap: MemoryGapRecord) -> str:
+    parts = [gap.location, *gap.people, gap.clue_text, *gap.user_clues]
+    return " ".join(dict.fromkeys(part.strip() for part in parts if part and part.strip()))[:500]
 
 
 def _contains_text(source: str, value: str) -> bool:
