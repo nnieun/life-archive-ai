@@ -14,6 +14,7 @@ __pycache__/
 .coverage
 htmlcov/
 .venv/
+.venv-review/
 
 # Raw personal transcripts (immutable and never committed)
 data/raw/*
