@@ -18,6 +18,14 @@ from backend.app.models.autobiography import (
     ChapterPlanItem,
     ChapterReview,
 )
+from backend.app.models.gap import (
+    MemoryGapCandidateCreate,
+    MemoryGapCandidateRelation,
+    MemoryGapCreate,
+    MemoryGapSourceType,
+    MemoryGapStatus,
+    MemoryGapType,
+)
 from backend.app.models.memory import DatePrecision
 from backend.app.models.qa import CitedClaim
 from backend.app.models.retrieval import RetrievalHit
@@ -27,6 +35,7 @@ from backend.app.services.autobiography import (
     AutobiographyModels,
     AutobiographyService,
 )
+from backend.app.services.gap_reconstruction import MemoryGapResolutionService
 from backend.app.services.timeline import TimelineService
 from backend.app.storage.database import SQLiteDatabase
 from backend.app.storage.models import (
@@ -154,6 +163,7 @@ def _request(
     autobiography_id: str,
     *,
     chapter_count: int = 1,
+    proceed_with_unresolved_gaps: bool = False,
 ) -> AutobiographyInput:
     return AutobiographyInput(
         autobiography_id=autobiography_id,
@@ -163,6 +173,7 @@ def _request(
         target_topics=[],
         chapter_count=chapter_count,
         top_k=10,
+        proceed_with_unresolved_gaps=proceed_with_unresolved_gaps,
     )
 
 
@@ -211,7 +222,8 @@ def test_generates_one_grounded_chapter_and_saves_completed_record(
     assert result.autobiography.status is AutobiographyStatus.COMPLETED
     assert len(result.autobiography.content.chapters) == 1
     chapter = result.autobiography.content.chapters[0]
-    assert "[mem_childhood|tr_001:0-20]" in chapter.content
+    assert "[mem_childhood|tr_001:0-20]" not in chapter.content
+    assert chapter.citations[0].memory_id == "mem_childhood"
     assert chapter.citations[0].memory_id == "mem_childhood"
     assert result.autobiography == repository.get_autobiography("autobio_one")
 
@@ -424,6 +436,165 @@ def test_verified_earlier_chapter_remains_saved_when_later_chapter_fails(
     assert result.citations[0].memory_id == "mem_childhood"
 
 
+def _important_location_gap(repository: SQLiteRepository):
+    gap = repository.create_memory_gap(
+        MemoryGapCreate(
+            gap_id="gap_childhood_place",
+            memory_id="mem_childhood",
+            gap_type=MemoryGapType.MISSING_LOCATION,
+            clue_text="어린 시절에 갔던 극장 이름은 기억나지 않는다.",
+            missing_field="location_detail",
+            period_start="2000",
+            period_end="2000",
+            confidence=0.9,
+            importance_score=0.9,
+            status=MemoryGapStatus.CANDIDATE_FOUND,
+            source_type=MemoryGapSourceType.MEMORY,
+            source_id="mem_childhood",
+        )
+    )
+    candidate = repository.create_memory_gap_candidate(
+        MemoryGapCandidateCreate(
+            candidate_id="gcan_childhood_place",
+            gap_id=gap.gap_id,
+            value="아카데미극장",
+            explanation="관련 내부 기록에서 찾은 후보입니다.",
+            deterministic_score=0.8,
+            llm_relation=MemoryGapCandidateRelation.RELATED,
+            supporting_source_ids=["seg_001"],
+        )
+    )
+    return gap, candidate
+
+
+def test_important_unresolved_gap_blocks_before_any_writing_model(
+    autobiography_storage,
+) -> None:
+    repository, hits = autobiography_storage
+    gap, _candidate = _important_location_gap(repository)
+    plan_model = QueueModel()
+    service = AutobiographyService(
+        repository,
+        FakeRetriever(hits),
+        TimelineService(repository),
+        _models(plan=plan_model),
+    )
+
+    preview = service.check_important_gaps(_request("preview_only"))
+    result = service.generate(_request("autobio_blocked_gap"))
+
+    assert preview.requires_gap_confirmation is True
+    assert [item.gap_id for item in preview.important_unresolved_gaps] == [
+        gap.gap_id
+    ]
+    assert result.completed is False
+    assert result.requires_gap_confirmation is True
+    assert result.error == "Important unresolved memory gaps require confirmation"
+    assert result.autobiography.content.chapters == []
+    assert plan_model.inputs == []
+
+
+def test_unconfirmed_candidate_is_removed_when_user_proceeds_with_current_data(
+    autobiography_storage,
+) -> None:
+    repository, hits = autobiography_storage
+    gap, candidate = _important_location_gap(repository)
+    hallucinated = _draft(
+        0,
+        "mem_childhood",
+        "2000년에 아카데미극장에서 어린 시절을 보냈습니다.",
+    )
+    guarded = _draft(
+        0,
+        "mem_childhood",
+        "2000년의 정확한 극장 이름은 현재 기록에서 확인되지 않습니다.",
+    )
+    write_model = QueueModel(hallucinated)
+    verify_model = QueueModel(
+        ChapterReview(passed=True, reason="미확인 장소를 사실로 쓰지 않았습니다.")
+    )
+    service = AutobiographyService(
+        repository,
+        FakeRetriever(hits),
+        TimelineService(repository),
+        _models(
+            plan=QueueModel(
+                ChapterPlan(chapters=[_plan_item(0, "mem_childhood")])
+            ),
+            write=write_model,
+            verify=verify_model,
+            revise=QueueModel(guarded),
+        ),
+    )
+
+    result = service.generate(
+        _request(
+            "autobio_guarded_gap",
+            proceed_with_unresolved_gaps=True,
+        )
+    )
+
+    assert result.completed is True
+    assert result.requires_gap_confirmation is False
+    assert result.retry_count == 1
+    content = result.autobiography.content.chapters[0].content
+    assert candidate.value not in content
+    assert "현재 기록에서 확인되지 않습니다" in content
+    assert gap.gap_id in str(write_model.inputs[0])
+    assert candidate.value not in str(write_model.inputs[0])
+    assert len(verify_model.inputs) == 1
+
+
+def test_confirmed_gap_correction_is_used_by_the_next_autobiography(
+    autobiography_storage,
+) -> None:
+    repository, _hits = autobiography_storage
+    gap, candidate = _important_location_gap(repository)
+    resolution = MemoryGapResolutionService(repository).resolve(
+        gap_id=gap.gap_id,
+        candidate_id=candidate.candidate_id,
+        user_confirmed=True,
+    )
+    corrected = repository.get_memory(resolution.resolved_memory_id)
+    assert corrected is not None
+    corrected_hit = RetrievalHit(
+        memory_id=corrected.memory_id,
+        score=1.0,
+        memory=corrected,
+        bm25_rank=1,
+        bm25_score=1.0,
+    )
+    service = AutobiographyService(
+        repository,
+        FakeRetriever([corrected_hit]),
+        TimelineService(repository),
+        _models(
+            plan=QueueModel(
+                ChapterPlan(chapters=[_plan_item(0, corrected.memory_id)])
+            ),
+            write=QueueModel(
+                _draft(
+                    0,
+                    corrected.memory_id,
+                    "2000년에 아카데미극장에서 어린 시절의 일을 겪었습니다.",
+                )
+            ),
+            verify=QueueModel(
+                ChapterReview(passed=True, reason="확인된 수정 기억과 일치합니다.")
+            ),
+        ),
+    )
+
+    preview = service.check_important_gaps(_request("resolved_preview"))
+    result = service.generate(_request("autobio_resolved_gap"))
+
+    assert preview.requires_gap_confirmation is False
+    assert result.completed is True
+    assert "아카데미극장" in result.autobiography.content.chapters[0].content
+    assert result.retrieved_memory_ids == [corrected.memory_id]
+    assert repository.get_memory_gap(gap.gap_id).status is MemoryGapStatus.RESOLVED
+
+
 def test_openai_models_use_strict_structured_outputs(monkeypatch) -> None:
     structured = [Mock(), Mock(), Mock(), Mock()]
     chat_model = Mock()
@@ -476,6 +647,14 @@ def test_autobiography_generate_and_get_api(autobiography_storage) -> None:
                 "chapter_count": 1,
             },
         )
+        gap_check = client.post(
+            "/api/v1/autobiographies/gap-check",
+            json={
+                "title": "API 자서전",
+                "request": "내 이야기를 써 줘",
+                "chapter_count": 1,
+            },
+        )
         fetched = client.get("/api/v1/autobiographies/autobio_api")
         missing = client.get("/api/v1/autobiographies/missing")
     finally:
@@ -487,3 +666,5 @@ def test_autobiography_generate_and_get_api(autobiography_storage) -> None:
     assert fetched.json()["autobiography_id"] == "autobio_api"
     assert missing.status_code == 404
     assert missing.json()["error"]["code"] == "http_error"
+    assert gap_check.status_code == 200
+    assert gap_check.json()["requires_gap_confirmation"] is False

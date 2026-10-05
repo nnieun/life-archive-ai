@@ -142,6 +142,39 @@ def test_duplicate_index_is_skipped_without_embedding_again(vector_storage) -> N
     assert index.count == 1
 
 
+def test_batch_embeddings_and_unchanged_skip(vector_storage):
+    repository, index, embeddings = vector_storage
+    for number in range(5):
+        repository.create_memory(_memory(
+            f"batch_{number}", title="학교", summary="학교에서 만났다.",
+        ))
+    ids = [f"batch_{number}" for number in range(5)]
+    assert all(result.indexed for result in index.index_memories(ids, batch_size=2))
+    assert embeddings.document_calls == 3
+    assert not any(result.indexed for result in index.index_memories(ids))
+    assert embeddings.document_calls == 3
+
+
+def test_stale_candidate_does_not_hide_valid_memory(vector_storage):
+    repository, index, embeddings = vector_storage
+    repository.create_memory(_memory("stale", title="학교", summary="학교 학교"))
+    repository.create_memory(_memory("valid", title="바다", summary="바다"))
+    index.sync_from_sqlite()
+    repository.update_memory("stale", MemoryUpdate(summary="변경된 내용"))
+    hits = index.similarity_search("학교", top_k=1)
+    assert [hit.memory_id for hit in hits] == ["valid"]
+    assert embeddings.query_calls == 1
+
+
+def test_invalid_embedding_batch_does_not_write_vectors(vector_storage, monkeypatch):
+    repository, index, embeddings = vector_storage
+    repository.create_memory(_memory("batch", title="학교", summary="학교"))
+    monkeypatch.setattr(embeddings, "embed_documents", lambda texts: [])
+    with pytest.raises(ValueError, match="invalid batch"):
+        index.index_memories(["batch"])
+    assert index.count == 0
+
+
 def test_changed_memory_is_stale_until_reindexed(vector_storage) -> None:
     repository, index, _embeddings = vector_storage
     repository.create_memory(

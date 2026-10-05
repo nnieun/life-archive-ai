@@ -11,9 +11,11 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from backend.app.core.config import get_settings
 from backend.app.models.autobiography import (
     AutobiographyGenerationResult,
+    AutobiographyGapCheckResult,
     AutobiographyInput,
 )
 from backend.app.services.autobiography import (
+    AutobiographyGapCheckError,
     AutobiographyService,
     build_openai_autobiography_models,
 )
@@ -42,6 +44,7 @@ class AutobiographyRequest(BaseModel):
     target_topics: list[str] = Field(default_factory=list, max_length=20)
     chapter_count: int = Field(default=1, ge=1, le=3)
     top_k: int = Field(default=10, ge=1, le=30)
+    proceed_with_unresolved_gaps: bool = False
 
     @field_validator(
         "autobiography_id",
@@ -75,8 +78,10 @@ def get_autobiography_service() -> AutobiographyService:
     repository = SQLiteRepository(database)
     vector_index = MemoryVectorIndex(
         repository,
-        settings.chroma_persist_directory,
-        embedding_model=settings.openai_embedding_model,
+        settings.embedding_index_directory,
+        embedding_model=settings.embedding_model,
+        embedding_provider=settings.embedding_provider,
+        embedding_base_url=settings.ollama_base_url,
         api_key=settings.openai_api_key,
     )
     vector_index.sync_from_sqlite()
@@ -92,8 +97,9 @@ def get_autobiography_service() -> AutobiographyService:
         retriever,
         TimelineService(repository),
         build_openai_autobiography_models(
-            settings.openai_model,
-            api_key=settings.openai_api_key,
+            settings.chat_model,
+            api_key=settings.chat_api_key,
+            base_url=settings.chat_base_url,
         ),
     )
 
@@ -121,12 +127,48 @@ def generate_autobiography(
                 target_topics=request.target_topics,
                 chapter_count=request.chapter_count,
                 top_k=request.top_k,
+                proceed_with_unresolved_gaps=(
+                    request.proceed_with_unresolved_gaps
+                ),
             )
         )
     except StorageConflictError as exception:
         raise HTTPException(
             status_code=409,
             detail="Autobiography already exists",
+        ) from exception
+
+
+@router.post(
+    "/autobiographies/gap-check",
+    response_model=AutobiographyGapCheckResult,
+)
+def check_autobiography_gaps(
+    request: AutobiographyRequest,
+    service: AutobiographyService = Depends(get_autobiography_service),
+) -> AutobiographyGapCheckResult:
+    """Preview only important unresolved gaps related to this writing request."""
+
+    try:
+        return service.check_important_gaps(
+            AutobiographyInput(
+                autobiography_id=request.autobiography_id or "gap_check",
+                title=request.title,
+                request=request.request,
+                target_period=request.target_period,
+                target_topics=request.target_topics,
+                chapter_count=request.chapter_count,
+                top_k=request.top_k,
+                proceed_with_unresolved_gaps=False,
+            )
+        )
+    except AutobiographyGapCheckError as exception:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "autobiography_gap_check_unavailable",
+                "message": "자서전과 관련된 기억 빈칸을 현재 확인할 수 없습니다.",
+            },
         ) from exception
 
 

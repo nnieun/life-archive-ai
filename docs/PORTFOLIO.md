@@ -2,13 +2,16 @@
 
 ## 한 줄 소개
 
-Life Archive AI는 STT 텍스트를 구조화된 기억으로 저장하고, 각 답변을 원문 offset과 함께 검증하는 Memory-Centric RAG MVP입니다.
+Life Archive AI는 흩어진 STT 기록을 구조화된 기억으로 만들고, 빠진 기억은
+내부 기록에서 근거와 함께 복원하도록 돕는 Memory-Centric RAG MVP입니다.
 
 ## 보여줄 핵심 문제와 해결
 
 | 문제 | 구현한 해결책 |
 |---|---|
 | 긴 기록에서 사건을 다시 찾기 어려움 | 기억 추출, chunking, BM25·dense·MMR·hybrid 검색 |
+| 기록마다 사람·장소·날짜가 빠져 기억의 맥락이 끊김 | 결정적 빈칸 탐지와 제한된 Tool Calling 검색으로 근거 있는 후보 제안 |
+| 모델이 그럴듯한 복원 결과를 자동으로 사실화할 위험 | exact-quote·source ID 서버 검증, 결정적 점수, 사용자 명시적 확인 뒤 append-only 정정 |
 | LLM이 사실을 만들어낼 위험 | 검색된 memory만 사용하고 citation/offset 검증 |
 | 원문과 파생 결과의 불일치 | SQLite를 단일 진실 공급원으로 사용하고 Chroma/BM25는 재생성 가능한 index로 분리 |
 | 정정·삭제 후 이전 결과 노출 | superseded/deleted 상태와 index 동기화 |
@@ -17,12 +20,18 @@ Life Archive AI는 STT 텍스트를 구조화된 기억으로 저장하고, 각 
 ## 3분 데모 순서
 
 1. `docs/OPERATIONS.md`의 명령으로 backend와 Streamlit을 실행합니다.
-2. 샘플 TXT를 업로드하고 처리 결과와 citation을 확인합니다.
-3. Chat에서 기록에 존재하는 질문과 존재하지 않는 질문을 각각 입력합니다.
-4. 존재하는 질문은 답변·memory ID·원문 offset을 보여주고, 근거가 부족한 질문은 답변을 거절하는지 확인합니다.
-5. Timeline에서 부분 날짜와 미상 날짜가 분리되는지 확인합니다.
-6. Autobiography에서 여러 chapter와 chapter별 supporting memory를 확인합니다.
-7. 필요하면 transcript 삭제 후 검색·timeline·autobiography에서 파생 결과가 사라지는지 시연합니다.
+2. 샘플 TXT를 업로드하고 추출 기억, citation, 발견된 기억 빈칸 수를 확인합니다.
+3. 기억 빈칸 화면에서 내부 기억 → 업로드 원문 순서로 후보를 찾고, 후보의
+   원문 근거와 점수를 확인합니다.
+4. 확인하지 않은 후보가 기억에 반영되지 않는 모습을 먼저 보여준 뒤, 체크박스로
+   직접 동의하고 정정 기억이 만들어지는 것을 확인합니다.
+5. 같은 주제로 자서전을 요청해 미해결 중요 빈칸이 먼저 표시되는지, 해결 후에는
+   정정된 기억이 자서전 검색에 사용되는지 확인합니다.
+6. Chat에서 기록에 존재하는 질문과 존재하지 않는 질문을 각각 입력해 citation과
+   안전한 거절을 시연합니다.
+7. Timeline에서 부분 날짜와 미상 날짜가 분리되는지 확인합니다.
+8. 필요하면 transcript 삭제 후 검색·timeline·autobiography에서 파생 결과가
+   사라지고 관련 빈칸도 닫히는지 시연합니다.
 
 ## 평가 결과를 설명하는 방법
 
@@ -34,15 +43,28 @@ Life Archive AI는 STT 텍스트를 구조화된 기억으로 저장하고, 각 
 
 ## 기술적 차별점
 
-- QA와 autobiography만 LangGraph workflow로 구성하고, CRUD·chunking·timeline은 일반 서비스로 단순하게 유지했습니다.
+- QA·기억 복원·autobiography만 LangGraph workflow로 구성하고,
+  CRUD·chunking·빈칸 탐지·timeline은 일반 서비스로 단순하게 유지했습니다.
+- 기억 복원 모델이 직접 DB를 수정하지 못하게 읽기 전용 도구만 바인딩했습니다.
+  후보 확정은 별도의 서버 경로에서 사용자 동의와 내부 근거를 다시 검증합니다.
+- Tool Calling 순서와 최대 호출 수를 서버가 강제하고, 모델 점수 대신 검색·날짜·
+  장소·인물·사건 일치도를 조합한 결정적 점수를 사용합니다.
 - 원문을 수정하지 않고 source offset을 끝까지 보존합니다.
 - 검증 실패 시 한 번만 재작성하고, 두 번째 실패는 안전한 거절로 처리합니다.
 - 실제 평가 러너는 같은 chunk 전략의 query embedding을 검색 방식 사이에서 재사용해 비교 비용을 줄입니다.
 
 ## 프로젝트 요약
 
-> “문서 요약기가 아니라 기억 저장소를 만들었습니다. SQLite를 source of truth로 두고, 검색은 파생 index로 제한했습니다. 생성된 답변은 memory와 transcript offset으로 검증하고, 근거가 없으면 거절합니다. 결정적 평가와 실제 임베딩 평가를 분리해 품질·비용·지연을 각각 확인할 수 있게 했습니다.”
+> “문서 요약기가 아니라 기억 저장소를 만들었습니다. SQLite를 source of truth로
+> 두고, 검색은 파생 index로 제한했습니다. 기록에서 빠진 사람·장소·날짜를
+> 감지하면 Tool Calling으로 내부 기록을 단계적으로 검색하지만, 근거와 일치한
+> 후보도 사용자가 확인하기 전에는 사실로 저장하지 않습니다. 답변과 자서전은
+> memory와 transcript offset으로 검증하고, 근거가 없으면 거절합니다.”
 
 ## 명시할 한계
 
-이 버전은 로컬 단일 사용자 MVP이며, STT·OCR·인증·다중 사용자 권한·클라우드 배포·백그라운드 작업 큐는 포함하지 않습니다. 실제 임베딩 평가는 합성 데이터만 사용하며, 개인 transcript의 운영 성능을 의미하지 않습니다.
+이 버전은 로컬 단일 사용자 MVP이며, STT·OCR·인증·다중 사용자 권한·클라우드
+배포·백그라운드 작업 큐는 포함하지 않습니다. 기억 복원은 업로드한 내부 기록만
+검색하며, 웹 검색·외부 자료 provenance·Hugging Face 임베딩 비교·운영 tracing은
+후속 범위입니다. 실제 임베딩 평가는 합성 데이터만 사용하며, 개인 transcript의
+운영 성능을 의미하지 않습니다.

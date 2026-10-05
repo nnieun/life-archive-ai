@@ -1,0 +1,10 @@
+{
+  "cases": [
+    {"id":"single_work","kind":"single","question":"처음 회사에 출근해서 어떤 일을 했나?","relevant_memory_ids":["eval_first_job"],"required_terms":[["포스터"],["사원증"]]},
+    {"id":"single_train","kind":"single","question":"눈빛시 여행에서 무엇을 관람했고 왜 일찍 돌아왔나?","relevant_memory_ids":["eval_train_trip"],"required_terms":[["박물관"],["폭설"]]},
+    {"id":"multi_four","kind":"multi","question":"기록된 중학교 입학, 중학교 졸업, 첫 출근, 온라인 강의 수료 과제를 각각 설명해 줘. 네 사건을 모두 포함해 줘.","relevant_memory_ids":["eval_school_entrance","eval_school_graduation","eval_first_job","eval_online_course"],"required_terms":[["입학"],["졸업"],["포스터"],["일정 관리"]]},
+    {"id":"multi_three","kind":"multi","question":"푸른해변 여행, 단풍산 등산, 눈빛시 여행에서 한 일을 각각 설명해 줘.","relevant_memory_ids":["eval_beach_trip","eval_mountain_hike","eval_train_trip"],"required_terms":[["조개"],["주먹밥"],["박물관"]]},
+    {"id":"uncertain_date","kind":"uncertainty","question":"가상의 영수는 언제 라디오를 수리했어?","relevant_memory_ids":["eval_radio"],"required_terms":[["1967"],["1968"]]},
+    {"id":"absent_birthday","kind":"unanswerable","question":"가상의 영수의 정확한 생년월일은 언제야?","relevant_memory_ids":[],"required_terms":[]}
+  ]
+}

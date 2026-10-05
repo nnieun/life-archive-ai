@@ -7,6 +7,7 @@ from typing import Annotated, Literal, TypedDict
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from backend.app.storage.models import CitationRecord
+from backend.app.models.qa_diagnostics import QAStepDiagnostic, QASchemaIssue
 
 
 class QAModel(BaseModel):
@@ -22,6 +23,7 @@ class QAEvidence(QAModel):
     transcript_id: str
     title: str
     summary: str
+    emotion: str | None = None
     people: list[str] = Field(default_factory=list)
     location: str | None = None
     event_date: str | None = None
@@ -45,6 +47,15 @@ class EvidenceAssessment(QAModel):
         return self
 
 
+class EvidenceSelection(QAModel):
+    """Local model output with one authoritative selection, not two flags."""
+
+    reason: str = Field(min_length=1, description="Why the selected memories answer the question, or why none can.")
+    selected_memory_ids: list[str] = Field(
+        description="Exact IDs from supplied evidence that support an answer. Empty if insufficient."
+    )
+
+
 class CitedClaim(QAModel):
     """One answer claim supported by one or more retrieved memories."""
 
@@ -65,6 +76,13 @@ class GroundedAnswerDraft(QAModel):
     claims: list[CitedClaim] = Field(min_length=1)
 
 
+class AnswerProposal(QAModel):
+    """An empty claim list means the retrieved evidence cannot answer."""
+
+    reason: str = Field(min_length=1)
+    claims: list[CitedClaim]
+
+
 class AnswerVerification(QAModel):
     """Structured citation and support verification result."""
 
@@ -73,12 +91,22 @@ class AnswerVerification(QAModel):
     unsupported_claim_indexes: list[Annotated[int, Field(ge=0)]] = Field(
         default_factory=list
     )
+    missing_required_memory_ids: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_unsupported_claims(self) -> AnswerVerification:
-        if self.passed and self.unsupported_claim_indexes:
-            raise ValueError("passed verification cannot list unsupported claims")
+        if self.passed and (self.unsupported_claim_indexes or self.missing_required_memory_ids):
+            raise ValueError("passed verification cannot list unsupported claims or missing memories")
         return self
+
+
+class QAQueryPlan(QAModel):
+    """Deterministic retrieval and coverage requirements shared by graph nodes."""
+
+    mode: Literal["standard", "entity_overview", "composite"] = "standard"
+    matched_people: list[str] = Field(default_factory=list)
+    subqueries: list[str] = Field(default_factory=list)
+    required_memory_ids: list[str] = Field(default_factory=list)
 
 
 class QAValidationResult(QAModel):
@@ -87,6 +115,9 @@ class QAValidationResult(QAModel):
     stage: Literal["evidence", "answer"]
     passed: bool
     reason: str
+    failure_code: str | None = None
+    exception_type: str | None = None
+    schema_issues: list[QASchemaIssue] = Field(default_factory=list)
 
 
 class QAResult(QAModel):
@@ -100,6 +131,9 @@ class QAResult(QAModel):
     validation_result: QAValidationResult
     retry_count: int = Field(ge=0, le=1)
     error: str | None = None
+    elapsed_ms: float = Field(default=0, ge=0)
+    cache_hit: bool = False
+    steps: list[QAStepDiagnostic] = Field(default_factory=list)
 
 
 class QAState(TypedDict):
@@ -108,6 +142,7 @@ class QAState(TypedDict):
     session_id: str
     question: str
     top_k: int
+    query_plan: QAQueryPlan
     retrieved_memory_ids: list[str]
     selected_evidence: list[QAEvidence]
     answer_draft: GroundedAnswerDraft | None
@@ -117,3 +152,4 @@ class QAState(TypedDict):
     final_answer: str
     retry_count: int
     error: str | None
+    diagnostic_steps: list[QAStepDiagnostic]

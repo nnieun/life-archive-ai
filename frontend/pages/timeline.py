@@ -28,7 +28,7 @@ def render_event(event: TimelineEvent) -> None:
             st.warning(f"불확실성: {event.uncertainty_notes}")
         else:
             st.caption("추가로 기록된 불확실성이 없습니다.")
-        render_citations(event.citations)
+        render_citations(event.citations, scope=f"timeline-{event.memory_id}")
 
 
 st.title("기억 Timeline")

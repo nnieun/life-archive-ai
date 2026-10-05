@@ -1,0 +1,17 @@
+{
+  "events": [
+    {"memory_id":"radio","title":"영수 오빠의 라디오 수리","text":"1967년 또는 1968년경 영수 오빠가 중학생일 때 고장난 라디오를 수리했다.","people":["영수 오빠"]},
+    {"memory_id":"meal","title":"영수 오빠와 김치볶음밥 식사","text":"영수 오빠와 가위바위보에서 져서 김치볶음밥을 함께 먹었다.","people":["영수 오빠"]},
+    {"memory_id":"pen","title":"필통 사건","text":"중학교 때 친구와 장난치다가 필통을 빼앗으려다 복도에서 넘어졌다.","people":["친구"]},
+    {"memory_id":"school","title":"학교 졸업","text":"중학교 졸업식에서 친구들과 사진을 찍고 선생님께 감사 인사를 했다.","people":["친구들","선생님"]},
+    {"memory_id":"entrance","title":"학교 입학","text":"중학교 입학식에서 담임 선생님을 만나고 새 공책에 시간표를 적었다.","people":["담임 선생님"]},
+    {"memory_id":"work","title":"첫 출근","text":"첫 출근 날 사원증을 받고 작은 포스터 시안을 정리했다.","people":[]},
+    {"memory_id":"course","title":"온라인 강의","text":"온라인 프로그래밍 강의의 수료 과제로 일정 관리 프로그램을 완성했다.","people":[]}
+  ],
+  "cases": [
+    {"id":"person_overview","kind":"overview","question":"영수 오빠는 누구야?","expected_ids":["radio","meal"],"forbidden_ids":["pen","school","entrance","work","course"]},
+    {"id":"specific_event","kind":"specific","question":"영수 오빠가 라디오를 언제 수리했어?","expected_ids":["radio"],"forbidden_ids":["meal","pen","school","entrance","work","course"]},
+    {"id":"compound","kind":"compound","question":"학교 입학, 학교 졸업, 첫 출근, 온라인 강의를 각각 설명해 줘.","expected_ids":["entrance","school","work","course"],"forbidden_ids":["radio","meal","pen"]},
+    {"id":"unsupported","kind":"unanswerable","question":"영수 오빠의 정확한 생년월일은 언제야?","expected_ids":[],"forbidden_ids":["radio","meal","pen","school","entrance","work","course"]}
+  ]
+}

@@ -1,4 +1,4 @@
-"""Immutable TXT upload, extraction, and indexing orchestration."""
+"""Immutable TXT/PDF upload, extraction, and indexing orchestration."""
 
 from __future__ import annotations
 
@@ -6,10 +6,15 @@ from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
 from uuid import uuid4
+from collections.abc import Callable
 
 from backend.app.models.ingestion import IngestionResult
 from backend.app.models.transcript import TranscriptLoadRequest
 from backend.app.services.chunking import chunk_and_store_transcript
+from backend.app.services.gap_detection import (
+    MemoryGapDetectionService,
+    MemoryGapDetector,
+)
 from backend.app.services.memory_extraction import (
     MemoryExtractionError,
     StructuredMemoryModel,
@@ -28,7 +33,7 @@ class IngestionError(RuntimeError):
 
 
 class InvalidUploadError(IngestionError):
-    """The upload name or content is not an acceptable TXT file."""
+    """The upload name or content is not an acceptable TXT/PDF file."""
 
 
 class UploadConflictError(IngestionError):
@@ -45,6 +50,7 @@ class TranscriptIngestionService:
         extraction_model: StructuredMemoryModel,
         vector_index: MemoryVectorIndex,
         localization_model: StructuredMemoryModel | None = None,
+        gap_detector: MemoryGapDetector | None = None,
     ) -> None:
         transcript_root.mkdir(parents=True, exist_ok=True)
         self._transcript_root = transcript_root.resolve(strict=True)
@@ -52,6 +58,7 @@ class TranscriptIngestionService:
         self._extraction_model = extraction_model
         self._vector_index = vector_index
         self._localization_model = localization_model
+        self._gap_detector = gap_detector or MemoryGapDetectionService(repository)
 
     def ingest(
         self,
@@ -60,6 +67,7 @@ class TranscriptIngestionService:
         content: bytes,
         language: str | None = None,
         recorded_at: datetime | None = None,
+        progress: Callable[[dict], None] | None = None,
     ) -> IngestionResult:
         """Persist a new raw file, extract memories, and refresh Chroma."""
 
@@ -103,6 +111,8 @@ class TranscriptIngestionService:
         transcript_id: str | None = None
         indexed_memory_ids: list[str] = []
         try:
+            if progress:
+                progress({'stage': 'loading'})
             loaded = TranscriptLoader(
                 self._transcript_root,
                 known_content_hashes=known_hashes,
@@ -142,12 +152,17 @@ class TranscriptIngestionService:
             )
             self._repository.create_transcript(loaded)
             transcript_id = loaded.transcript_id
+            if progress:
+                progress({'stage': 'chunking', 'transcript_id': transcript_id})
             chunks = chunk_and_store_transcript(
                 self._repository,
                 loaded.transcript_id,
             )
             memories = []
-            for chunk in chunks:
+            for chunk_index, chunk in enumerate(chunks):
+                if progress:
+                    progress({'stage': 'extracting', 'transcript_id': transcript_id,
+                              'completed_segments': chunk_index, 'total_segments': len(chunks)})
                 memories.extend(
                     extract_and_store_segment(
                         self._repository,
@@ -156,11 +171,18 @@ class TranscriptIngestionService:
                         localization_model=self._localization_model,
                     )
                 )
+            if progress:
+                progress({'stage': 'gaps', 'transcript_id': transcript_id, 'memory_count': len(memories)})
+            gaps = self._gap_detector.detect_for_memories(memories)
             try:
-                index_results = []
-                for memory in memories:
-                    index_results.append(self._vector_index.index_memory(memory.memory_id))
-                    indexed_memory_ids.append(memory.memory_id)
+                # Failed batches may have persisted vectors; register all IDs
+                # before attempting writes so rollback also removes those.
+                indexed_memory_ids.extend(memory.memory_id for memory in memories)
+                if progress:
+                    progress({'stage': 'indexing', 'transcript_id': transcript_id, 'memory_count': len(memories)})
+                index_results = self._vector_index.index_memories(indexed_memory_ids)
+                if progress:
+                    progress({'stage': 'completed', 'transcript_id': transcript_id})
             except Exception as exception:
                 raise IngestionError("Memory index update failed") from exception
         except TranscriptLoadError as exception:
@@ -183,11 +205,13 @@ class TranscriptIngestionService:
             filename=loaded.filename,
             segment_count=len(chunks),
             memory_count=len(memories),
+            gap_count=len(gaps),
             indexed_memory_count=sum(
                 result.indexed or result.content_hash is not None
                 for result in index_results
             ),
             memory_ids=[memory.memory_id for memory in memories],
+            gap_ids=[gap.gap_id for gap in gaps],
         )
 
     @staticmethod
@@ -211,11 +235,10 @@ class TranscriptIngestionService:
     ) -> None:
         """Undo everything a failed ingest may have done, including Chroma.
 
-        ``index_memory`` writes vectors one memory at a time, so a failure
-        partway through the loop leaves earlier vectors committed to Chroma.
+        Batch writes can fail after some vectors have reached Chroma.
         Once ``delete_transcript`` hard-deletes the SQLite rows there is no
         way to rediscover those memory_ids from the database, so the caller
-        must hand back exactly the ids it already indexed before cleanup runs.
+        must hand back every attempted ID before cleanup runs.
         """
         for memory_id in indexed_memory_ids:
             try:

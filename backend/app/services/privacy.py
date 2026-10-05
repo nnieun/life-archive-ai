@@ -80,6 +80,7 @@ class TranscriptDeletionService:
 
         deleted_segment_count = 0
         deleted_memory_count = 0
+        dismissed_gap_count = 0
         invalidated_message_count = 0
         invalidated_autobiography_count = 0
         if transcript.deleted_at is None:
@@ -88,6 +89,7 @@ class TranscriptDeletionService:
             )
             deleted_segment_count = sqlite_result.deleted_segment_count
             deleted_memory_count = sqlite_result.deleted_memory_count
+            dismissed_gap_count = sqlite_result.dismissed_gap_count
             invalidated_message_count = (
                 sqlite_result.invalidated_conversation_message_count
             )
@@ -106,6 +108,7 @@ class TranscriptDeletionService:
             transcript_id=transcript_id,
             deleted_segment_count=deleted_segment_count,
             deleted_memory_count=deleted_memory_count,
+            dismissed_gap_count=dismissed_gap_count,
             deleted_vector_count=deleted_vector_count,
             bm25_memory_count=self._bm25_index.count,
             invalidated_conversation_message_count=invalidated_message_count,

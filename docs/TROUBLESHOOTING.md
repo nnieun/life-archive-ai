@@ -158,13 +158,127 @@ flowchart TB
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-이 수정 시점의 결과는 `174 passed`였습니다.
+통과 개수는 기능 추가에 따라 달라지므로 숫자를 문서에 고정하지 않고, 위 명령의
+최종 실패·오류가 0인지 확인합니다.
+
+## 기억 빈칸 복원 오류를 구분하는 방법
+
+기억 빈칸 복원은 업로드 실패와 별도 흐름입니다. 먼저 업로드 응답의
+`gap_count`와 `gap_ids`가 생성되었는지 확인한 뒤, 기억 빈칸 화면에서 복원을
+실행합니다. 현재 MVP는 사용자가 올린 기억과 원문만 검색하며 웹 요청을 보내지
+않습니다.
+
+### 정상 처리 순서
+
+1. `search_memory`로 구조화된 기억을 검색합니다.
+2. 부족하면 `search_uploaded_documents`로 SQLite에 저장된 업로드 원문 조각을
+   검색합니다.
+3. 그래도 부족하면 `search_memory_gaps`로 유사한 빈칸과 단서를 검색합니다.
+4. 근거가 없으면 `request_more_clues`로 질문만 만들고, 후보를 꾸며내지 않습니다.
+5. 후보는 화면에 제시만 하며 사용자의 확인 전에는 기억을 수정하지 않습니다.
+
+### 오류 코드별 의미
+
+| 오류 코드 | 확인할 내용 |
+|---|---|
+| `memory_gap_not_found` | 삭제되었거나 잘못된 `gap_id`인지 확인 |
+| `memory_gap_already_closed` | 이미 해결·닫기 처리한 빈칸인지 확인 |
+| `memory_gap_clue_duplicate` | 같은 사용자 단서를 두 번 보냈는지 확인 |
+| `memory_gap_tool_policy_violation` | 모델이 도구 순서를 건너뛰거나 같은 도구를 반복 호출했는지 확인 |
+| `memory_gap_candidate_output_invalid` | 후보 JSON 형식, source ID, exact evidence/value 포함 여부 확인 |
+| `memory_gap_candidate_source_invalid` | 후보 생성 후 내부 근거가 삭제·변경되었는지 확인 |
+| `memory_gap_candidate_mismatch` | 다른 빈칸에서 나온 후보 ID인지 확인 |
+| `memory_gap_target_changed` | 후보 생성 뒤 대상 기억이 이미 정정되었는지 확인 |
+| `memory_gap_confirmation_required` | 요청의 `user_confirmed`가 명시적으로 `true`인지 확인 |
+| `memory_gap_model_unavailable` | `.env`의 OpenAI 키·모델 설정과 모델 API 상태 확인 |
+| `memory_gap_search_unavailable` | SQLite·Chroma 초기화와 검색 인덱스 상태 확인 |
+
+`memory_gap_candidate_output_invalid`는 후보를 저장하지 않은 안전 실패입니다.
+모델이 반환한 `supporting_source_ids`가 실제 도구 결과에 있어야 하고,
+`evidence_text`는 해당 source 원문에, 후보 `value`는 그 evidence에 정확히
+포함되어야 합니다. 로그에는 개인 원문이나 API 키를 남기지 말고 오류 코드와
+요청 ID로만 추적합니다.
+
+### 후보를 확인했는데 반영되지 않는 경우
+
+화면에서 후보를 선택하는 것만으로는 부족합니다. “이 후보를 내 기억으로
+확정합니다” 체크 후 반영해야 합니다. 서버는 `candidate_id`와
+`user_confirmed=true`를 다시 검사하고, 성공하면 다음 변경을 하나의 transaction으로
+저장합니다.
+
+- 원래 기억을 대체하는 append-only 정정 기억 생성
+- 선택 후보 `ACCEPTED`, 나머지 후보 `REJECTED`
+- 빈칸 `RESOLVED`와 정정 기억 ID 연결
+
+중간에 하나라도 실패하면 전체 transaction이 rollback되므로 일부 상태만 남지
+않습니다.
+
+### 자서전이 바로 생성되지 않는 경우
+
+요청과 관련된 중요도 `0.65` 이상의 미해결 빈칸이 있으면 먼저 확인 화면을
+보여주는 정상 동작입니다. “먼저 채우기”로 기억 빈칸 화면에 가거나, 명시적으로
+현재 기록만으로 진행할 수 있습니다. 진행하더라도 미확정 후보 값은 자서전의
+사실 근거로 사용할 수 없습니다.
 
 ## PDF 업로드
 
 PDF는 텍스트 레이어가 있는 문서만 처리할 수 있습니다. 이미지로만 구성된
 스캔 PDF는 OCR 범위 밖이므로 텍스트를 추출할 수 없습니다. 이 경우 텍스트
 레이어가 포함된 PDF 또는 UTF-8 TXT를 사용합니다.
+
+## `evidence quote was not found in the transcript chunk` 오류
+
+### 증상
+
+업로드가 실패하고 다음 오류가 표시됩니다.
+
+```text
+Memory extraction returned invalid structured data
+(evidence quote was not found in the transcript chunk)
+오류 코드: memory_output_invalid
+```
+
+### 원인
+
+기억 추출 모델이 원문에 없는 문장을 증거 문구로 반환했거나, 원문의 줄바꿈·
+연속 공백을 바꾸어 반환한 경우입니다. 기존 구현은 한 후보의 오류만으로 전체
+업로드를 중단했습니다.
+
+### 해결 방법
+
+- 공백·줄바꿈만 달라진 증거 문구는 원문 위치를 찾아 자동 복원합니다.
+- 여러 후보 중 일부만 원문과 일치하지 않으면 검증되지 않은 후보만 제외하고,
+  원문에서 확인되는 후보는 계속 저장합니다.
+- 모든 후보가 원문에 없으면 허위 기억 방지를 위해 업로드를 중단합니다.
+- 같은 오류가 반복되면 요청 ID와 함께 원문을 확인하고, 모델이 요약문이 아닌
+  원문 문장을 `evidence_text`로 반환하는지 확인합니다.
+
+수정 후에는 백엔드와 프론트엔드를 재시작해야 최신 코드를 사용합니다.
+
+## `tr_...` 식별자가 화면에 보이는 경우
+
+`tr_c0c49e5410ce385c238d9797` 같은 값은 업로드된 transcript를 내부적으로
+구분하는 ID입니다. 사용자에게 의미 있는 파일명이 아니며, 데이터베이스와
+출처 연결에만 사용됩니다. 화면에는 원본 파일명과 기억 제목만 표시해야 합니다.
+계속 보이면 백엔드·프론트엔드를 모두 재시작하고 브라우저를 새로고침합니다.
+
+## `memory_gap_candidate_output_invalid` 오류
+
+### 증상
+
+기억 빈칸에서 저장된 기록으로 후보를 찾은 뒤 `Service Unavailable`과 함께
+“복원 후보가 내부 근거와 일치하지 않아 저장하지 않았습니다”가 표시됩니다.
+
+### 원인
+
+후보 모델이 검색 결과의 증거 문구를 인용하면서 줄바꿈·연속 공백을 바꿀 수
+있습니다. 기존 검증은 문자열을 완전히 같게 비교해 실제 같은 문장도 거부했습니다.
+
+### 해결 방법
+
+증거 문구와 후보 값은 공백·줄바꿈을 하나의 공백으로 접어 비교합니다. 문장 내용이
+바뀌거나 검색 결과에 없는 문구는 계속 거부합니다. 검증 실패 후보는 저장하지 않아
+허위 정보를 기억에 반영하지 않습니다. 수정 후 백엔드와 프론트엔드를 재시작합니다.
 
 ## 구조화된 기억의 원본 확인
 

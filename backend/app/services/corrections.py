@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from uuid import uuid4
 
 from backend.app.models.memory import MemoryCorrection
@@ -32,6 +33,14 @@ class UntraceableMemoryError(MemoryCorrectionError):
     """The memory carries no transcript source to inherit."""
 
 
+@dataclass(frozen=True)
+class PreparedMemoryCorrection:
+    """Validated append-only correction ready for one atomic repository write."""
+
+    memory: MemoryCreate
+    sources: tuple[MemorySourceCreate, ...]
+
+
 class MemoryCorrectionService:
     """Replace a memory by appending a correction instead of editing in place."""
 
@@ -48,6 +57,23 @@ class MemoryCorrectionService:
         The original row stays in SQLite so the extraction remains auditable;
         ``list_memories`` is what hides it from timeline, retrieval and search
         once the correction exists.
+        """
+
+        prepared = self.prepare_memory_correction(memory_id, correction)
+        return self._repository.create_memory_correction(
+            prepared.memory,
+            list(prepared.sources),
+        )
+
+    def prepare_memory_correction(
+        self,
+        memory_id: str,
+        correction: MemoryCorrection,
+    ) -> PreparedMemoryCorrection:
+        """Validate and build a correction without writing it.
+
+        Gap resolution uses this form so the correction and candidate status
+        transition can be committed in the same SQLite transaction.
         """
 
         original = self._repository.get_memory(memory_id)
@@ -84,9 +110,9 @@ class MemoryCorrectionService:
             status=MemoryStatus.CORRECTED,
             supersedes_memory_id=memory_id,
         )
-        return self._repository.create_memory_correction(
-            record,
-            [
+        return PreparedMemoryCorrection(
+            memory=record,
+            sources=tuple(
                 MemorySourceCreate(
                     memory_source_id=f"src_{uuid4().hex[:24]}",
                     memory_id=corrected_id,
@@ -96,5 +122,5 @@ class MemoryCorrectionService:
                     end_offset=source.end_offset,
                 )
                 for source in sources
-            ],
+            ),
         )

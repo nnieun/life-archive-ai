@@ -92,6 +92,71 @@ CREATE TABLE IF NOT EXISTS memory_sources (
         ON UPDATE CASCADE ON DELETE SET NULL
 );
 
+CREATE TABLE IF NOT EXISTS memory_gaps (
+    gap_id TEXT PRIMARY KEY,
+    memory_id TEXT,
+    gap_type TEXT NOT NULL
+        CHECK (
+            gap_type IN (
+                'MISSING_LOCATION', 'MISSING_PERSON', 'MISSING_DATE',
+                'UNCERTAIN_EVENT', 'CONFLICTING_FACT', 'WEAK_PROVENANCE'
+            )
+        ),
+    clue_text TEXT NOT NULL,
+    missing_field TEXT,
+    period_start TEXT,
+    period_end TEXT,
+    location TEXT,
+    people_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(people_json)),
+    confidence REAL NOT NULL CHECK (confidence >= 0.0 AND confidence <= 1.0),
+    importance_score REAL NOT NULL DEFAULT 0.5
+        CHECK (importance_score >= 0.0 AND importance_score <= 1.0),
+    status TEXT NOT NULL DEFAULT 'OPEN'
+        CHECK (
+            status IN (
+                'OPEN', 'SEARCHING', 'CANDIDATE_FOUND', 'WAITING_USER',
+                'RESOLVED', 'DISMISSED'
+            )
+        ),
+    source_type TEXT NOT NULL
+        CHECK (source_type IN ('MEMORY', 'TRANSCRIPT_SEGMENT', 'EXTERNAL')),
+    source_id TEXT NOT NULL,
+    web_search_consent INTEGER NOT NULL DEFAULT 0
+        CHECK (web_search_consent IN (0, 1)),
+    user_clues_json TEXT NOT NULL DEFAULT '[]'
+        CHECK (json_valid(user_clues_json)),
+    resolved_candidate_id TEXT,
+    resolved_memory_id TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    resolved_at TEXT,
+    FOREIGN KEY (memory_id) REFERENCES memories(memory_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (resolved_memory_id) REFERENCES memories(memory_id)
+        ON UPDATE CASCADE ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS memory_gap_candidates (
+    candidate_id TEXT PRIMARY KEY,
+    gap_id TEXT NOT NULL,
+    value TEXT NOT NULL,
+    explanation TEXT NOT NULL,
+    deterministic_score REAL NOT NULL
+        CHECK (deterministic_score >= 0.0 AND deterministic_score <= 1.0),
+    llm_relation TEXT NOT NULL DEFAULT 'UNKNOWN'
+        CHECK (llm_relation IN ('SUPPORTS', 'RELATED', 'CONFLICTS', 'UNKNOWN')),
+    supporting_source_ids_json TEXT NOT NULL DEFAULT '[]'
+        CHECK (json_valid(supporting_source_ids_json)),
+    external_sources_json TEXT NOT NULL DEFAULT '[]'
+        CHECK (json_valid(external_sources_json)),
+    status TEXT NOT NULL DEFAULT 'PROPOSED'
+        CHECK (status IN ('PROPOSED', 'ACCEPTED', 'REJECTED')),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (gap_id) REFERENCES memory_gaps(gap_id)
+        ON UPDATE CASCADE ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS conversation_sessions (
     session_id TEXT PRIMARY KEY,
     title TEXT,
@@ -124,6 +189,28 @@ CREATE TABLE IF NOT EXISTS autobiographies (
     deleted_at TEXT
 );
 
+CREATE TABLE IF NOT EXISTS qa_failure_diagnostics (
+    diagnostic_id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL REFERENCES conversation_sessions(session_id),
+    user_message_id TEXT NOT NULL REFERENCES conversation_messages(message_id),
+    created_at TEXT NOT NULL,
+    payload_json TEXT NOT NULL CHECK (json_valid(payload_json))
+);
+CREATE TABLE IF NOT EXISTS chat_jobs (
+    job_id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('queued','running','completed','failed','cancelled')),
+    created_at TEXT NOT NULL,
+    result_json TEXT,
+    error TEXT,
+    failure_code TEXT,
+    failure_stage TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_jobs_pending_session
+    ON chat_jobs(session_id) WHERE status IN ('queued','running');
+CREATE INDEX IF NOT EXISTS idx_qa_failures_session
+    ON qa_failure_diagnostics(session_id, created_at);
+
 CREATE INDEX IF NOT EXISTS idx_segments_transcript
     ON transcript_segments(transcript_id, chunk_index);
 CREATE INDEX IF NOT EXISTS idx_memories_transcript_status
@@ -135,6 +222,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_memories_supersedes
     WHERE supersedes_memory_id IS NOT NULL AND status != 'deleted';
 CREATE INDEX IF NOT EXISTS idx_memory_sources_memory
     ON memory_sources(memory_id);
+CREATE INDEX IF NOT EXISTS idx_memory_gaps_status_importance
+    ON memory_gaps(status, importance_score DESC, created_at);
+CREATE INDEX IF NOT EXISTS idx_memory_gaps_memory
+    ON memory_gaps(memory_id, status);
+CREATE INDEX IF NOT EXISTS idx_memory_gap_candidates_gap
+    ON memory_gap_candidates(gap_id, status, deterministic_score DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_transcripts_active_content_hash
     ON transcripts(content_hash)
     WHERE deleted_at IS NULL;
@@ -156,6 +249,53 @@ MEMORY_COLUMN_MIGRATIONS = {
 TRANSCRIPT_COLUMN_MIGRATIONS = {
     "source_path": "TEXT",
 }
+
+
+SCHEMA_SQL += """
+CREATE TABLE IF NOT EXISTS qa_answer_cache (
+    cache_key TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL REFERENCES conversation_sessions(session_id) ON DELETE CASCADE,
+    result_json TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS qa_performance (
+    measurement_id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL REFERENCES conversation_sessions(session_id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    payload_json TEXT NOT NULL
+);
+"""
+SCHEMA_SQL += """
+CREATE TABLE IF NOT EXISTS ingestion_jobs (
+    job_id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    filename TEXT NOT NULL,
+    content_hash TEXT NOT NULL,
+    status TEXT NOT NULL CHECK(status IN ('queued','running','completed','failed','cancelled')),
+    created_at TEXT NOT NULL,
+    transcript_id TEXT,
+    progress_json TEXT,
+    result_json TEXT,
+    error TEXT,
+    failure_code TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS pending_ingestion_content ON ingestion_jobs(content_hash) WHERE status IN ('queued','running');
+CREATE UNIQUE INDEX IF NOT EXISTS pending_ingestion_filename ON ingestion_jobs(filename COLLATE NOCASE) WHERE status IN ('queued','running');
+CREATE UNIQUE INDEX IF NOT EXISTS pending_ingestion_session ON ingestion_jobs(session_id) WHERE status IN ('queued','running');
+"""
+def _cache_invalidation_schema() -> str:
+    statements = []
+    for table in ('memories', 'memory_sources', 'transcript_segments', 'transcripts'):
+        for event in ('INSERT', 'UPDATE', 'DELETE'):
+            statements.append(f"""
+                CREATE TRIGGER IF NOT EXISTS invalidate_qa_cache_{table}_{event.lower()}
+                AFTER {event} ON {table}
+                BEGIN DELETE FROM qa_answer_cache; END;
+            """)
+    return ''.join(statements)
+
+
+SCHEMA_SQL += _cache_invalidation_schema()
 
 
 class SQLiteDatabase:
@@ -192,6 +332,15 @@ class SQLiteDatabase:
         """Create every application table and index idempotently."""
         with self._lock:
             self._connection.executescript(SCHEMA_SQL)
+            job_columns = {row["name"] for row in self._connection.execute("PRAGMA table_info(chat_jobs)")}
+            for column in ("failure_code", "failure_stage"):
+                if column not in job_columns:
+                    self._connection.execute(f"ALTER TABLE chat_jobs ADD COLUMN {column} TEXT")
+            ingestion_columns = {row["name"] for row in self._connection.execute("PRAGMA table_info(ingestion_jobs)")}
+            if 'diagnostic_json' not in ingestion_columns:
+                self._connection.execute('ALTER TABLE ingestion_jobs ADD COLUMN diagnostic_json TEXT')
+            if 'progress_json' not in job_columns:
+                self._connection.execute('ALTER TABLE chat_jobs ADD COLUMN progress_json TEXT')
             existing_transcript_columns = {
                 str(row["name"])
                 for row in self._connection.execute(

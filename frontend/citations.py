@@ -23,6 +23,8 @@ def remove_internal_citation_markers(answer: str) -> str:
 def render_citations(
     citations: list[Citation],
     memory_labels: dict[str, str] | None = None,
+    *,
+    scope: str,
 ) -> None:
     """출처를 클릭 가능한 연결된 기억으로 표시한다."""
 
@@ -31,11 +33,15 @@ def render_citations(
         return
 
     st.markdown("**연결된 기억**")
-    for index, citation in enumerate(citations):
+    seen: set[str] = set()
+    for citation in citations:
+        if citation.memory_id in seen:
+            continue
+        seen.add(citation.memory_id)
         label = (memory_labels or {}).get(citation.memory_id, "연결된 기억")
         if st.button(
             f"연결된 기억: {label}",
-            key=f"open-memory-{citation.memory_id}-{index}",
+            key=f"open-memory-{scope}-{citation.memory_id}",
         ):
             st.session_state["selected_memory_id"] = citation.memory_id
             st.switch_page("pages/memories.py")

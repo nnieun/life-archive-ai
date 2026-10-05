@@ -12,5 +12,7 @@ class IngestionResult(BaseModel):
     filename: str
     segment_count: int = Field(ge=0)
     memory_count: int = Field(ge=0)
+    gap_count: int = Field(default=0, ge=0)
     indexed_memory_count: int = Field(ge=0)
     memory_ids: list[str]
+    gap_ids: list[str] = Field(default_factory=list)

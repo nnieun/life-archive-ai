@@ -71,11 +71,14 @@ def build_openai_memory_model(
     model_name: str = DEFAULT_OPENAI_MODEL,
     *,
     api_key: str | None = None,
+    base_url: str | None = None,
 ) -> StructuredMemoryModel:
     """Configure OpenAI native Structured Outputs through LangChain."""
     model_kwargs: dict[str, object] = {"model": model_name, "temperature": 0}
     if api_key:
         model_kwargs["api_key"] = api_key
+    if base_url:
+        model_kwargs.update(base_url=base_url, timeout=300, max_retries=0, use_responses_api=False)
     model = ChatOpenAI(**model_kwargs)
     return model.with_structured_output(
         MemoryExtractionProposalBatch,
@@ -89,12 +92,15 @@ def build_openai_memory_localization_model(
     model_name: str = DEFAULT_OPENAI_MODEL,
     *,
     api_key: str | None = None,
+    base_url: str | None = None,
 ) -> StructuredMemoryModel:
     """Configure a separate schema that cannot modify evidence or dates."""
 
     model_kwargs: dict[str, object] = {"model": model_name, "temperature": 0}
     if api_key:
         model_kwargs["api_key"] = api_key
+    if base_url:
+        model_kwargs.update(base_url=base_url, timeout=300, max_retries=0, use_responses_api=False)
     model = ChatOpenAI(**model_kwargs)
     return model.with_structured_output(
         MemoryLocalizationBatch,
@@ -230,6 +236,16 @@ def _resolve_evidence_text(
     if not evidence_text:
         raise MemoryExtractionOutputError("Memory evidence must contain source text")
     start_offset = segment.content.find(evidence_text)
+    matched_text = evidence_text
+    if start_offset < 0:
+        folded_source, source_map = _fold_whitespace(segment.content)
+        folded_quote, _ = _fold_whitespace(evidence_text)
+        folded_start = folded_source.find(folded_quote)
+        if folded_start >= 0 and folded_quote:
+            start_offset = source_map[folded_start]
+            end_index = folded_start + len(folded_quote) - 1
+            end_offset = source_map[end_index] + 1
+            matched_text = segment.content[start_offset:end_offset]
     if start_offset < 0:
         raise MemoryExtractionOutputError(
             "Memory evidence quote was not found in the transcript segment"
@@ -239,7 +255,7 @@ def _resolve_evidence_text(
     values.update(
         {
             "evidence_start_offset": start_offset,
-            "evidence_end_offset": start_offset + len(evidence_text),
+            "evidence_end_offset": start_offset + len(matched_text),
         }
     )
     try:
@@ -264,19 +280,48 @@ def _resolve_evidence_text(
         ) from exception
 
 
+def _fold_whitespace(value: str) -> tuple[str, list[int]]:
+    """Collapse whitespace while retaining indices into the original string."""
+    folded: list[str] = []
+    indices: list[int] = []
+    pending_space = False
+    for index, character in enumerate(value):
+        if character.isspace():
+            pending_space = bool(folded)
+            continue
+        if pending_space:
+            folded.append(" ")
+            indices.append(index - 1)
+        folded.append(character)
+        indices.append(index)
+        pending_space = False
+    return "".join(folded).strip(), indices
+
+
 def _resolve_candidates(
     batch: MemoryModelBatch,
     segment: TranscriptSegmentRecord,
 ) -> list[ExtractedMemory]:
     candidates: list[ExtractedMemory] = []
+    skipped_evidence_error: MemoryExtractionOutputError | None = None
     for raw_candidate in batch.memories:
-        candidate = (
-            _resolve_evidence_text(raw_candidate, segment)
-            if isinstance(raw_candidate, MemoryExtractionProposal)
-            else _normalize_evidence_offsets(raw_candidate, segment)
-        )
+        try:
+            candidate = (
+                _resolve_evidence_text(raw_candidate, segment)
+                if isinstance(raw_candidate, MemoryExtractionProposal)
+                else _normalize_evidence_offsets(raw_candidate, segment)
+            )
+        except MemoryExtractionOutputError as exception:
+            if "evidence quote was not found" not in str(exception):
+                raise
+            # Do not let one hallucinated proposal discard grounded proposals
+            # from the same batch. Never store this untraceable candidate.
+            skipped_evidence_error = exception
+            continue
         _validate_evidence(candidate, segment)
         candidates.append(candidate)
+    if not candidates and skipped_evidence_error is not None:
+        raise skipped_evidence_error
     return candidates
 
 
@@ -458,6 +503,51 @@ def _stable_id(prefix: str, values: Sequence[object]) -> str:
     return f"{prefix}_{hashlib.sha256(identity).hexdigest()[:24]}"
 
 
+_NAME_PREFIX_STOPWORDS = frozenset({"우리", "그", "내", "이", "저", "큰", "작은", "새", "친한", "외", "옆집", "그냥"})
+
+
+_BARE_RELATIONS = frozenset({"오빠", "언니", "누나", "형", "동생", "삼촌", "이모", "고모"})
+
+
+def _canonical_people(people: list[str], transcript_text: str) -> list[str]:
+    """Expand a bare kinship term to the full name the transcript uses elsewhere.
+
+    Segments are extracted independently, so "오빠" in a segment that never
+    repeats the name would lose "영수". When the whole transcript names that
+    person in exactly one way, use that full name.
+    """
+
+    result: list[str] = []
+    for person in people:
+        if person not in _BARE_RELATIONS:
+            if person not in result:
+                result.append(person)
+            continue
+        prefixes = {
+            match.group(1)
+            for match in re.finditer(rf"([가-힣]{{2,3}}) {re.escape(person)}", transcript_text)
+            if match.group(1) not in _NAME_PREFIX_STOPWORDS
+        }
+        expanded = f"{next(iter(prefixes))} {person}" if len(prefixes) == 1 else person
+        if expanded not in result:
+            result.append(expanded)
+    return [person for person in result
+            if not any(other != person and other.endswith(f" {person}") for other in result)]
+
+
+def _year_is_supported(event_date: str, transcript_text: str) -> bool:
+    """A year the transcript never states (e.g. "2024" for "3월 2일") is invented."""
+
+    year = event_date[:4]
+    return year in transcript_text or f"{year[2:]}년" in transcript_text
+
+
+def _drop_unsupported_year(candidate: ExtractedMemory, transcript_text: str) -> ExtractedMemory:
+    if candidate.event_date is None or _year_is_supported(candidate.event_date, transcript_text):
+        return candidate
+    return candidate.model_copy(update={"event_date": None, "date_precision": DatePrecision.UNKNOWN})
+
+
 def _storage_items(
     batch: MemoryModelBatch,
     segment: TranscriptSegmentRecord,
@@ -500,6 +590,16 @@ def _storage_items(
         raise MemoryExtractionOutputError(
             "Model returned conflicting event dates for the same evidence"
         )
+    transcript = repository.get_transcript(segment.transcript_id)
+    if transcript is not None:
+        candidates = [
+            _drop_unsupported_year(
+                candidate.model_copy(update={"people": _canonical_people(candidate.people, transcript.normalized_content)}),
+                transcript.normalized_content,
+            )
+            for candidate in candidates
+        ]
+
 
     items: list[tuple[MemoryCreate, MemorySourceCreate]] = []
     seen_memory_ids: set[str] = set()

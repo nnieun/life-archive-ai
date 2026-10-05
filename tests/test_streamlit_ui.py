@@ -10,9 +10,13 @@ from streamlit.testing.v1 import AppTest
 
 from frontend.api_client import (
     ApiClientError,
+    AutobiographyGapCheckResult,
     AutobiographyResult,
     ChatResult,
+    ChatJob,
     IngestionResult,
+    IngestionJob,
+    MemoryGapView,
     MemoryView,
     TimelineResult,
 )
@@ -40,13 +44,22 @@ def _citation() -> dict[str, object]:
 def api_client(monkeypatch) -> Mock:
     client = Mock()
     client.list_memories.return_value = []
+    client.list_memory_gaps.return_value = []
+    client.check_autobiography_gaps.return_value = (
+        AutobiographyGapCheckResult(
+            important_unresolved_gaps=[],
+            retrieved_memory_ids=[],
+            requires_gap_confirmation=False,
+        )
+    )
     monkeypatch.setattr(ui, "get_api_client", lambda: client)
     return client
 
 
 def _has_memory_citation_button(app: AppTest, memory_id: str) -> bool:
     return any(
-        button.key == f"open-memory-{memory_id}-0"
+        bool(button.key) and button.key.startswith("open-memory-")
+        and button.key.endswith(f"-{memory_id}")
         for button in app.button
     )
 
@@ -82,14 +95,19 @@ def test_service_failure_shows_request_id_without_private_detail(
 def test_txt_upload_displays_processing_and_index_result(
     api_client: Mock,
 ) -> None:
-    api_client.ingest_transcript.return_value = IngestionResult(
+    result = IngestionResult(
         transcript_id="tr_upload",
         filename="memory.txt",
         segment_count=2,
         memory_count=1,
+        gap_count=2,
         indexed_memory_count=1,
         memory_ids=["mem_001"],
     )
+    api_client.submit_ingestion_job.return_value = IngestionJob(job_id='job_upload', session_id='upload',
+        filename='memory.txt', status='queued', created_at='2026-10-05T00:00:00Z')
+    api_client.get_ingestion_job.return_value = IngestionJob(job_id='job_upload', session_id='upload',
+        filename='memory.txt', status='completed', created_at='2026-10-05T00:00:00Z', result=result)
     app = AppTest.from_file(_page_path("upload.py")).run()
 
     app.file_uploader[0].upload(
@@ -99,15 +117,22 @@ def test_txt_upload_displays_processing_and_index_result(
     ).run()
     app.button[0].click().run()
 
-    assert api_client.ingest_transcript.call_args.args[0] == "memory.txt"
+    assert api_client.submit_ingestion_job.call_args.args[0] == "memory.txt"
+    from frontend.upload_background import collect_upload_result
+    state = app.session_state.filtered_state
+    assert collect_upload_result(state, api_client)
+    app.session_state['last_upload_job'] = state['last_upload_job']
+    del app.session_state['pending_upload_job']
+    app.run()
     assert len(app.success) == 1
     assert "1개의 기억" in app.success[0].value
+    assert any("기억에서 확인이 필요한 빈칸 2개" in item.value for item in app.warning)
 
 
 def test_duplicate_txt_upload_shows_conflict_message(
     api_client: Mock,
 ) -> None:
-    api_client.ingest_transcript.side_effect = ApiClientError(
+    api_client.submit_ingestion_job.side_effect = ApiClientError(
         "conflict",
         status_code=409,
     )
@@ -123,6 +148,67 @@ def test_duplicate_txt_upload_shows_conflict_message(
     assert len(app.error) == 1
     assert "이미 등록된 TXT" in app.error[0].value
     assert "백엔드가 실행 중인지" not in app.error[0].value
+
+
+def test_memory_gap_page_uses_plain_korean_and_requires_confirmation(
+    api_client: Mock,
+) -> None:
+    api_client.list_memory_gaps.return_value = [
+        MemoryGapView.model_validate(
+            {
+                "gap": {
+                    "gap_id": "gap_ui",
+                    "memory_id": "mem_001",
+                    "gap_type": "MISSING_LOCATION",
+                    "clue_text": "극장 이름은 기억나지 않는다.",
+                    "missing_field": "location_detail",
+                    "period_start": "2001",
+                    "location": "대구 동성로",
+                    "people": ["친구"],
+                    "confidence": 0.9,
+                    "importance_score": 0.8,
+                    "status": "CANDIDATE_FOUND",
+                },
+                "candidates": [
+                    {
+                        "candidate_id": "gcan_ui",
+                        "gap_id": "gap_ui",
+                        "value": "아카데미극장",
+                        "explanation": "같은 시기와 장소의 기록입니다.",
+                        "deterministic_score": 0.9,
+                        "llm_relation": "SUPPORTS",
+                        "supporting_source_ids": ["seg_001"],
+                        "status": "PROPOSED",
+                    }
+                ],
+            }
+        )
+    ]
+
+    app = AppTest.from_file(_page_path("gaps.py")).run()
+
+    assert "정확한 장소가 비어 있어요" in str(app)
+    assert "아카데미극장" in str(app)
+    assert "불확실성 메모" not in str(app)
+    resolve_button = next(
+        button for button in app.button if button.key == "gap-resolve-gap_ui"
+    )
+    assert resolve_button.disabled is True
+
+    confirm = next(
+        checkbox for checkbox in app.checkbox if checkbox.key == "gap-confirm-gap_ui"
+    )
+    confirm.set_value(True).run()
+    resolve_button = next(
+        button for button in app.button if button.key == "gap-resolve-gap_ui"
+    )
+    resolve_button.click().run()
+
+    api_client.resolve_memory_gap.assert_called_once_with(
+        "gap_ui",
+        "gcan_ui",
+        user_confirmed=True,
+    )
 
 
 def test_chat_displays_answer_and_citation(api_client: Mock) -> None:
@@ -163,13 +249,42 @@ def test_chat_displays_answer_and_citation(api_client: Mock) -> None:
             "retry_count": 0,
         }
     )
+    from frontend.chat_background import collect_chat_result
+    api_client.submit_chat_job.return_value = ChatJob(
+        job_id="job_ui", session_id="session_ui", status="queued", created_at="2026-10-05T00:00:00Z")
+    api_client.get_chat_job.return_value = ChatJob(
+        job_id="job_ui", session_id="session_ui", status="completed", created_at="2026-10-05T00:00:00Z",
+        result=api_client.chat.return_value)
     app = AppTest.from_file(_page_path("chat.py")).run()
 
     app.chat_input[0].set_value("어디에서 만났어?").run()
+    assert app.chat_input[0].disabled
+    state = dict(app.session_state.filtered_state)
+    collect_chat_result(state, api_client)
+    del app.session_state["pending_chat_job"]
+    for key, value in state.items():
+        app.session_state[key] = value
+    app.run()
 
     assert "공원에서 만났습니다." in str(app)
     assert any("첫 만남" in button.label for button in app.button)
     assert _has_memory_citation_button(app, "mem_001")
+    api_client.submit_chat_job.return_value.job_id = "job_ui_second"
+    api_client.get_chat_job.return_value.job_id = "job_ui_second"
+    app.chat_input[0].set_value("그 기억을 다시 알려줘").run()
+    assert app.chat_input[0].disabled
+    state = dict(app.session_state.filtered_state)
+    collect_chat_result(state, api_client)
+    del app.session_state["pending_chat_job"]
+    for key, value in state.items():
+        app.session_state[key] = value
+    app.run()
+    assert not app.exception
+    citation_keys = [button.key for button in app.button
+                     if button.key and button.key.startswith("open-memory-")]
+    assert len(citation_keys) == len(set(citation_keys)) == 2
+    app.run()
+    assert not app.exception
 
 
 def test_timeline_displays_precision_and_citation(api_client: Mock) -> None:
@@ -230,3 +345,77 @@ def test_autobiography_displays_each_chapter_citation(
 
     assert any("1장. 첫 장" in header.value for header in app.header)
     assert _has_memory_citation_button(app, "mem_001")
+
+
+def test_autobiography_warns_about_related_gap_before_generation(
+    api_client: Mock,
+) -> None:
+    gap = {
+        "gap_id": "gap_autobio_ui",
+        "memory_id": "mem_001",
+        "gap_type": "MISSING_LOCATION",
+        "clue_text": "정확한 극장 이름은 기억나지 않는다.",
+        "missing_field": "location_detail",
+        "people": [],
+        "confidence": 0.9,
+        "importance_score": 0.9,
+        "status": "OPEN",
+    }
+    api_client.check_autobiography_gaps.return_value = (
+        AutobiographyGapCheckResult.model_validate(
+            {
+                "important_unresolved_gaps": [gap],
+                "retrieved_memory_ids": ["mem_001"],
+                "requires_gap_confirmation": True,
+            }
+        )
+    )
+    api_client.generate_autobiography.return_value = (
+        AutobiographyResult.model_validate(
+            {
+                "autobiography": {
+                    "autobiography_id": "auto_gap_ui",
+                    "title": "나의 기억",
+                    "status": "completed",
+                    "content": {
+                        "chapters": [
+                            {
+                                "title": "영화의 날",
+                                "content": (
+                                    "정확한 극장 이름은 현재 기록에서 "
+                                    "확인되지 않습니다."
+                                ),
+                                "citations": [_citation()],
+                            }
+                        ]
+                    },
+                },
+                "completed": True,
+                "retrieved_memory_ids": ["mem_001"],
+                "citations": [_citation()],
+                "retry_count": 0,
+                "important_unresolved_gaps": [gap],
+            }
+        )
+    )
+    app = AppTest.from_file(_page_path("autobiography.py")).run()
+    app.text_area[0].set_value("영화에 대한 기억을 써 주세요.")
+    app.button[0].click().run()
+
+    assert any("중요한 기억 빈칸이 1개" in item.value for item in app.warning)
+    api_client.generate_autobiography.assert_not_called()
+
+    confirmation = next(
+        checkbox
+        for checkbox in app.checkbox
+        if checkbox.key == "autobiography-unresolved-confirm"
+    )
+    confirmation.set_value(True).run()
+    proceed_button = next(
+        button for button in app.button if button.label == "현재 자료로 생성"
+    )
+    proceed_button.click().run()
+
+    assert api_client.generate_autobiography.call_args.kwargs[
+        "proceed_with_unresolved_gaps"
+    ] is True

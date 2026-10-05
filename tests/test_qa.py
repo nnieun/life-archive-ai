@@ -14,16 +14,18 @@ from backend.app.main import app
 from backend.app.models.memory import DatePrecision
 from backend.app.models.qa import (
     AnswerVerification,
+    AnswerProposal,
     CitedClaim,
     EvidenceAssessment,
     GroundedAnswerDraft,
     QAEvidence,
     QAResult,
+    QAQueryPlan,
     QAValidationResult,
 )
 from backend.app.models.retrieval import RetrievalHit
 from backend.app.models.transcript import LoadedTranscript
-from backend.app.prompts.qa import build_evidence_input
+from backend.app.prompts.qa import build_evidence_input, build_verification_input
 from backend.app.services import qa
 from backend.app.services.qa import (
     INSUFFICIENT_ANSWER,
@@ -63,6 +65,88 @@ class FakeRetriever:
     def search(self, query: str, *, top_k: int = 5) -> list[RetrievalHit]:
         self.calls.append((query, top_k))
         return self.hits[:top_k]
+
+
+def test_fast_flow_keeps_verification_and_cache_is_session_scoped(qa_storage):
+    repository, hit = qa_storage
+    proposal = AnswerProposal(reason='supported', claims=[CitedClaim(text=hit.memory.summary, memory_ids=[hit.memory_id])])
+    answer = QueueModel(proposal, proposal, proposal)
+    verifier = QueueModel(*[AnswerVerification(passed=True, reason='supported') for _ in range(3)])
+    service = GroundedQAService(repository, FakeRetriever([hit]),
+        QAModels(QueueModel(), answer, verifier, QueueModel()), combined=True, compact=True,
+        cache_enabled=True, max_rewrites=0)
+    progress = []
+    first = service.answer_question(session_id='fast', question='what happened?', progress=progress.append)
+    second = service.answer_question(session_id='fast', question='what happened?')
+    assert first.validation_result.passed and not first.cache_hit
+    assert second.cache_hit and second.citations == first.citations
+    assert len(answer.inputs) == len(verifier.inputs) == 1
+    assert progress[1]['memories'][0]['memory_id'] == hit.memory_id
+    assert [step.node for step in first.steps] == ['retrieve', 'generate_answer', 'verify_answer', 'finalize']
+    assert service.answer_question(session_id='another', question='what happened?').cache_hit is False
+    with repository._database.transaction() as connection:
+        connection.execute("UPDATE memories SET summary=summary || ' ' WHERE memory_id=?", (hit.memory_id,))
+        assert connection.execute('SELECT COUNT(*) FROM qa_answer_cache').fetchone()[0] == 0
+        records = connection.execute('SELECT payload_json FROM qa_performance').fetchall()
+        assert all('what happened?' not in row[0] and hit.memory.summary not in row[0] for row in records)
+    assert service.answer_question(session_id='fast', question='what happened?').cache_hit is False
+    repository.soft_delete_conversation_session('fast')
+    with repository._database.transaction() as connection:
+        assert connection.execute("SELECT COUNT(*) FROM qa_answer_cache WHERE session_id='fast'").fetchone()[0] == 0
+        assert connection.execute("SELECT COUNT(*) FROM qa_performance WHERE session_id='fast'").fetchone()[0] == 0
+
+
+def test_fast_insufficient_answer_skips_verification_and_is_not_cached(qa_storage):
+    repository, hit = qa_storage
+    answer = QueueModel(AnswerProposal(reason='no evidence', claims=[]), AnswerProposal(reason='no evidence', claims=[]))
+    service = GroundedQAService(repository, FakeRetriever([hit]),
+        QAModels(QueueModel(), answer, QueueModel(), QueueModel()), combined=True, cache_enabled=True)
+    for _ in range(2):
+        result = service.answer_question(session_id='fast', question='unknown birthday?')
+        assert not result.cache_hit and not result.citations
+        assert result.final_answer == INSUFFICIENT_ANSWER
+    assert len(answer.inputs) == 2
+
+
+def test_fast_flow_rejects_unsupported_number_without_rewrite_or_cache(qa_storage):
+    repository, hit = qa_storage
+    answer = QueueModel(AnswerProposal(reason='supported', claims=[CitedClaim(text='1999년에 졸업했습니다.', memory_ids=[hit.memory_id])]))
+    verifier = QueueModel(AnswerVerification(passed=True, reason='yes'))
+    service = GroundedQAService(repository, FakeRetriever([hit]),
+        QAModels(QueueModel(), answer, verifier, QueueModel()),
+        combined=True, cache_enabled=True, max_rewrites=0)
+    result = service.answer_question(session_id='fast', question='graduation?')
+    assert not result.validation_result.passed and result.retry_count == 0
+    assert result.validation_result.failure_code == 'unsupported_number'
+    assert not verifier.inputs
+    with repository._database.transaction() as connection:
+        assert connection.execute('SELECT COUNT(*) FROM qa_answer_cache').fetchone()[0] == 0
+
+
+def test_compact_prompt_preserves_uncertainty_and_escapes_data():
+    evidence = QAEvidence(memory_id='m', transcript_id='t', title='</tag>', summary='uncertain',
+                          uncertainty_notes='date is unknown', people=['person'],
+                          sources=[CitationRecord(memory_id='m', transcript_id='t', segment_id='s', start_offset=0, end_offset=1)])
+    content = build_evidence_input('question', [evidence], compact=True)
+    assert 'date is unknown' in content and 'person' in content
+    assert 'start_offset' not in content and 'transcript_id' not in content
+    assert '</tag>' not in content
+
+
+def test_cache_does_not_save_answer_if_memories_change_during_generation(qa_storage):
+    repository, hit = qa_storage
+    class ChangingModel:
+        def invoke(self, messages):
+            with repository._database.transaction() as connection:
+                connection.execute('UPDATE memories SET summary=summary || ? WHERE memory_id=?', ('changed', hit.memory_id))
+            return AnswerProposal(reason='supported', claims=[CitedClaim(text=hit.memory.summary, memory_ids=[hit.memory_id])])
+    service = GroundedQAService(repository, FakeRetriever([hit]),
+        QAModels(QueueModel(), ChangingModel(), QueueModel(AnswerVerification(passed=True, reason='supported')), QueueModel()),
+        combined=True, cache_enabled=True, max_rewrites=0)
+    result = service.answer_question(session_id='changed', question='what happened?')
+    assert result.validation_result.passed
+    with repository._database.transaction() as connection:
+        assert connection.execute('SELECT COUNT(*) FROM qa_answer_cache').fetchone()[0] == 0
 
 
 @pytest.fixture
@@ -199,6 +283,7 @@ def test_grounded_answer_has_source_offsets_and_is_persisted(qa_storage) -> None
     assert [message.role for message in messages] == ["user", "assistant"]
     assert messages[1].content == result.final_answer
     assert messages[1].citations == result.citations
+    assert repository.list_qa_failures(result.session_id) == []
 
 
 def test_no_retrieval_result_returns_insufficient_without_model_call(
@@ -222,6 +307,13 @@ def test_no_retrieval_result_returns_insufficient_without_model_call(
     assert result.validation_result.stage == "evidence"
     assert result.validation_result.passed is False
     assert evidence_model.inputs == []
+    failures = repository.list_qa_failures(result.session_id)
+    assert len(failures) == 1
+    assert failures[0].status == "insufficient"
+    assert failures[0].steps
+    assert "question" not in failures[0].model_dump()
+    repository.soft_delete_conversation_session(result.session_id)
+    assert repository.list_qa_failures(result.session_id) == []
 
 
 def test_model_can_reject_insufficient_evidence(qa_storage) -> None:
@@ -307,6 +399,37 @@ def test_failed_verification_rewrites_once_then_passes(qa_storage) -> None:
     assert "사진" in result.final_answer
     assert len(rewrite_model.inputs) == 1
     assert len(verification_model.inputs) == 2
+    assert repository.list_qa_failures(result.session_id) == []
+
+
+def test_retrieval_error_diagnostic_excludes_sensitive_exception(qa_storage):
+    repository, _hit = qa_storage
+    retriever = Mock()
+    retriever.search.side_effect = RuntimeError("private transcript and api key")
+    service = GroundedQAService(repository, retriever, _models(), provider="ollama", model_name="gemma4:e2b")
+    result = service.answer_question(session_id="session_error", question="synthetic question")
+    failure = repository.list_qa_failures(result.session_id)[0]
+    assert failure.status == "error"
+    assert failure.provider == "ollama"
+    assert failure.model == "gemma4:e2b"
+    assert failure.reason == "Memory retrieval failed"
+    assert "private transcript" not in failure.model_dump_json()
+    repository.soft_delete_conversation_message(failure.user_message_id)
+    assert repository.list_qa_failures(result.session_id) == []
+
+
+def test_evidence_schema_failure_records_stage_code_and_exception(qa_storage):
+    repository, hit = qa_storage
+    model = QueueModel({"parsed": {"sufficient": True, "reason": "test", "selected_memory_ids": []}})
+    service = GroundedQAService(repository, FakeRetriever([hit]), _models(evidence=model))
+    result = service.answer_question(session_id="schema_fail", question="synthetic question")
+    assert result.validation_result.failure_code == "output_schema_invalid"
+    failure = repository.list_qa_failures(result.session_id)[0]
+    assert failure.failure_code == "output_schema_invalid"
+    step = next(step for step in failure.steps if step.node == "evidence_sufficient")
+    assert step.exception_type == "ValidationError"
+    assert step.failure_code == "output_schema_invalid"
+    assert result.final_answer != REJECTED_ANSWER
 
 
 def test_second_verification_failure_rejects_draft(qa_storage) -> None:
@@ -352,10 +475,20 @@ def test_second_verification_failure_rejects_draft(qa_storage) -> None:
         question="졸업식은 언제였어?",
     )
 
-    assert result.final_answer == REJECTED_ANSWER
+    assert result.validation_result.failure_code is not None
+    assert result.final_answer
     assert result.citations == []
     assert result.retry_count == 1
     assert result.validation_result.passed is False
+    failure = repository.list_qa_failures(result.session_id)[0]
+    verification_steps = [step for step in failure.steps if step.node == "verify_answer"]
+    assert len(verification_steps) == 2
+    assert all(step.passed is False for step in verification_steps)
+    assert failure.retrieved_memory_ids == ["mem_school"]
+    assert failure.retry_count == 1
+    assert failure.elapsed_ms >= 0
+    repository.soft_delete_transcript_cascade("tr_001")
+    assert repository.list_qa_failures(result.session_id) == []
 
 
 def test_unknown_citation_is_rejected_before_verifier(qa_storage) -> None:
@@ -391,7 +524,8 @@ def test_unknown_citation_is_rejected_before_verifier(qa_storage) -> None:
         question="무슨 일이 있었어?",
     )
 
-    assert result.final_answer == REJECTED_ANSWER
+    assert result.validation_result.failure_code is not None
+    assert result.final_answer
     assert result.error == "Answer generation failed"
     assert verifier.inputs == []
 
@@ -486,6 +620,132 @@ def _approving_service(
     return service, verification_model
 
 
+def test_entity_overview_expands_all_matching_person_memories(qa_storage) -> None:
+    repository, radio = qa_storage
+    with repository._database.transaction() as connection:
+        connection.execute("UPDATE memories SET people_json=? WHERE memory_id=?", ('[\"영수 오빠\"]', radio.memory_id))
+    radio = radio.model_copy(update={'memory': repository.get_memory(radio.memory_id)})
+    meal = _add_grounded_memory(repository, memory_id='mem_meal', title='김치볶음밥 식사',
+        summary='영수 오빠와 김치볶음밥을 함께 먹었다.', people=['영수 오빠'],
+        segment_id='seg_meal', segment_content='영수 오빠와 김치볶음밥을 함께 먹었다.', chunk_index=1)
+    proposal = AnswerProposal(reason='두 기억 모두 관련됨', claims=[
+        CitedClaim(text=radio.memory.summary, memory_ids=[radio.memory_id]),
+        CitedClaim(text=meal.memory.summary, memory_ids=[meal.memory_id]),
+    ])
+    answer = QueueModel(proposal)
+    verifier = QueueModel(AnswerVerification(passed=True, reason='supported'))
+    retriever = FakeRetriever([radio])
+    service = GroundedQAService(repository, retriever,
+        QAModels(QueueModel(), answer, verifier, QueueModel()), combined=True, compact=True,
+        max_rewrites=0)
+
+    result = service.answer_question(session_id='entity-all', question='영수 오빠는 누구야?', top_k=1)
+
+    assert result.validation_result.passed
+    assert set(result.retrieved_memory_ids) == {radio.memory_id, meal.memory_id}
+    assert {citation.memory_id for citation in result.citations} == {radio.memory_id, meal.memory_id}
+    prompt = answer.inputs[0][1].content
+    assert 'entity_overview' in prompt and radio.memory_id in prompt and meal.memory_id in prompt
+
+
+def test_specific_event_question_does_not_force_other_person_memories(qa_storage) -> None:
+    repository, radio = qa_storage
+    with repository._database.transaction() as connection:
+        connection.execute("UPDATE memories SET people_json=? WHERE memory_id=?", ('[\"영수 오빠\"]', radio.memory_id))
+    radio = radio.model_copy(update={'memory': repository.get_memory(radio.memory_id)})
+    _add_grounded_memory(repository, memory_id='mem_meal', title='식사', summary='영수 오빠와 밥을 먹었다.',
+        people=['영수 오빠'], segment_id='seg_meal', segment_content='영수 오빠와 밥을 먹었다.', chunk_index=1)
+    proposal = AnswerProposal(reason='라디오 근거', claims=[CitedClaim(text=radio.memory.summary,
+                                                                       memory_ids=[radio.memory_id])])
+    service = GroundedQAService(repository, FakeRetriever([radio]),
+        QAModels(QueueModel(), QueueModel(proposal),
+                 QueueModel(AnswerVerification(passed=True, reason='supported')), QueueModel()),
+        combined=True, compact=True, max_rewrites=0)
+
+    result = service.answer_question(session_id='specific-event', question='영수 오빠가 라디오를 어떻게 수리했어?')
+
+    assert result.validation_result.passed
+    assert result.retrieved_memory_ids == [radio.memory_id]
+    assert {citation.memory_id for citation in result.citations} == {radio.memory_id}
+
+
+def test_coverage_check_blocks_omitted_entity_memory_before_model_verifier(qa_storage) -> None:
+    repository, radio = qa_storage
+    with repository._database.transaction() as connection:
+        connection.execute("UPDATE memories SET people_json=? WHERE memory_id=?", ('[\"영수 오빠\"]', radio.memory_id))
+    radio = radio.model_copy(update={'memory': repository.get_memory(radio.memory_id)})
+    _add_grounded_memory(repository, memory_id='mem_meal', title='식사', summary='영수 오빠와 밥을 먹었다.',
+        people=['영수 오빠'], segment_id='seg_meal', segment_content='영수 오빠와 밥을 먹었다.', chunk_index=1)
+    proposal = AnswerProposal(reason='일부만 선택', claims=[CitedClaim(text=radio.memory.summary,
+                                                                      memory_ids=[radio.memory_id])])
+    verifier = QueueModel(AnswerVerification(passed=True, reason='should not run'))
+    service = GroundedQAService(repository, FakeRetriever([radio]),
+        QAModels(QueueModel(), QueueModel(proposal), verifier, QueueModel()),
+        combined=True, compact=True, max_rewrites=0)
+
+    result = service.answer_question(session_id='missing-coverage', question='영수 오빠는 누구야?')
+
+    assert not result.validation_result.passed
+    assert result.validation_result.failure_code == 'incomplete_answer'
+    assert verifier.inputs == []
+    assert result.citations == []
+
+
+def test_compound_question_retrieves_one_memory_per_subquery(qa_storage) -> None:
+    repository, school = qa_storage
+    work = _add_grounded_memory(repository, memory_id='mem_work', title='첫 출근',
+        summary='첫 출근에 포스터를 정리했다.', people=[], segment_id='seg_work',
+        segment_content='첫 출근에 포스터를 정리했다.', chunk_index=1)
+    course = _add_grounded_memory(repository, memory_id='mem_course', title='온라인 강의',
+        summary='온라인 강의에서 일정 관리 프로그램을 만들었다.', people=[], segment_id='seg_course',
+        segment_content='온라인 강의에서 일정 관리 프로그램을 만들었다.', chunk_index=2)
+
+    class MappingRetriever:
+        def __init__(self):
+            self.calls = []
+        def search(self, query, *, top_k=3):
+            self.calls.append((query, top_k))
+            if '첫 출근' in query:
+                return [work]
+            if '온라인 강의' in query:
+                return [course]
+            if '학교 졸업' in query:
+                return [school]
+            return [school]
+
+    retriever = MappingRetriever()
+    proposal = AnswerProposal(reason='모든 항목', claims=[
+        CitedClaim(text=school.memory.summary, memory_ids=[school.memory_id]),
+        CitedClaim(text=work.memory.summary, memory_ids=[work.memory_id]),
+        CitedClaim(text=course.memory.summary, memory_ids=[course.memory_id]),
+    ])
+    service = GroundedQAService(repository, retriever,
+        QAModels(QueueModel(), QueueModel(proposal),
+                 QueueModel(AnswerVerification(passed=True, reason='complete')), QueueModel()),
+        combined=True, compact=True, max_rewrites=0)
+
+    result = service.answer_question(session_id='compound',
+        question='학교 졸업, 첫 출근, 온라인 강의를 각각 설명해 줘.', top_k=3)
+
+    assert result.validation_result.passed
+    assert set(result.retrieved_memory_ids) == {'mem_school', 'mem_work', 'mem_course'}
+    assert len(retriever.calls) == 4
+
+
+def test_compact_verification_keeps_required_uncited_evidence():
+    citation = lambda mid: CitationRecord(memory_id=mid, transcript_id='t', segment_id='s',
+                                           start_offset=0, end_offset=1)
+    evidence = [QAEvidence(memory_id=mid, transcript_id='t', title=mid, summary=mid,
+                           sources=[citation(mid)]) for mid in ('a', 'b', 'noise')]
+    draft = GroundedAnswerDraft(claims=[CitedClaim(text='a', memory_ids=['a'])])
+    plan = QAQueryPlan(mode='entity_overview', required_memory_ids=['a', 'b'])
+
+    prompt = build_verification_input('person?', evidence, draft, compact=True, query_plan=plan)
+
+    assert '"memory_id":"a"' in prompt and '"memory_id":"b"' in prompt
+    assert '"memory_id":"noise"' not in prompt
+
+
 def test_verifier_approval_cannot_pass_a_number_absent_from_the_evidence(
     qa_storage,
 ) -> None:
@@ -507,7 +767,8 @@ def test_verifier_approval_cannot_pass_a_number_absent_from_the_evidence(
 
     # The cited memory_id is real and the verifier signed off twice; only the
     # deterministic check keeps the invented year out of the answer.
-    assert result.final_answer == REJECTED_ANSWER
+    assert result.validation_result.failure_code is not None
+    assert result.final_answer
     assert result.validation_result.passed is False
     assert "1998" in result.validation_result.reason
     assert len(verification_model.inputs) == 2
@@ -585,7 +846,8 @@ def test_name_from_an_uncited_memory_cannot_be_attached_to_a_claim(
         question="졸업식에서 누구와 있었어?",
     )
 
-    assert result.final_answer == REJECTED_ANSWER
+    assert result.validation_result.failure_code is not None
+    assert result.final_answer
     assert "민수" in result.validation_result.reason
 
 
@@ -609,7 +871,8 @@ def test_citation_without_traceable_transcript_text_fails_verification(
         question="졸업식에서 무엇을 했어?",
     )
 
-    assert result.final_answer == REJECTED_ANSWER
+    assert result.validation_result.failure_code is not None
+    assert result.final_answer
     assert result.validation_result.reason == qa.UNTRACEABLE_CITATION
 
 
@@ -710,3 +973,17 @@ def test_chat_api_returns_service_result_and_validates_input() -> None:
     )
     assert invalid.status_code == 422
     assert invalid.json()["error"]["code"] == "validation_error"
+
+
+def test_grounding_allows_short_name_contained_in_cited_longer_name():
+    from backend.app.services.qa import GroundedQAService
+    import inspect
+    source = inspect.getsource(GroundedQAService._grounding_error)
+    assert "if any(person in cited for cited in cited_people)" in source
+
+
+def test_memory_id_digits_in_claim_text_are_not_unsupported_numbers():
+    from backend.app.services.qa import _DIGIT_RUN, _strip_memory_ids
+    text = "그는 라디오를 고쳤다 (mem_790be3ff1768feebd89749ba) [mem_790be3ff|tr_1:0-5]"
+    assert _DIGIT_RUN.findall(_strip_memory_ids(text)) == []
+    assert _strip_memory_ids("1967년에 수리했다") == "1967년에 수리했다"

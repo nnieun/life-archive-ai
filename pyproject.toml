@@ -25,6 +25,7 @@ dependencies = [
     "rank-bm25>=0.2.2,<1",
     "streamlit>=1.42,<2",
     "uvicorn>=0.34,<1",
+    "deepagents>=0.7.21",
 ]
 
 [project.optional-dependencies]

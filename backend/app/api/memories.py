@@ -6,7 +6,9 @@ from base64 import b64decode
 from binascii import Error as Base64Error
 from functools import lru_cache
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
+from hashlib import sha256
+import sqlite3
 from openai import (
     APIConnectionError,
     APIError,
@@ -26,6 +28,9 @@ from pydantic import (
 from backend.app.core.config import get_settings
 from backend.app.core.safe_logging import log_safe_exception
 from backend.app.models.ingestion import IngestionResult
+from backend.app.models.ingestion_job import IngestionJob
+from backend.app.services.ingestion_jobs import IngestionJobStore
+from backend.app.services.qa_failures import classify_exception, MESSAGES
 from backend.app.models.memory import MemoryCorrection
 from backend.app.services.corrections import (
     MemoryAlreadyCorrectedError,
@@ -47,6 +52,7 @@ from backend.app.services.memory_extraction import (
     build_openai_memory_model,
 )
 from backend.app.services.vector_index import MemoryVectorIndex
+from backend.app.services.source_lines import original_line_number
 from backend.app.storage.database import SQLiteDatabase
 from backend.app.storage.models import MemoryRecord
 from backend.app.storage.repository import SQLiteRepository, StorageError
@@ -70,6 +76,96 @@ class IngestTranscriptRequest(BaseModel):
         if value is not None and not value.strip():
             raise ValueError("text fields must not be blank")
         return value
+
+
+class SubmitIngestionRequest(IngestTranscriptRequest):
+    session_id: str = Field(min_length=1, max_length=200)
+
+    @field_validator('session_id')
+    @classmethod
+    def validate_session(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError('session_id must not be blank')
+        return value
+
+
+@lru_cache(maxsize=1)
+def get_ingestion_job_store() -> IngestionJobStore:
+    database = SQLiteDatabase(get_settings().sqlite_database_path)
+    database.initialize()
+    return IngestionJobStore(database)
+
+
+def _failure_diagnostic(exception: BaseException, progress: dict) -> dict:
+    """Record the cause chain without copying transcript text from library errors."""
+
+    chain = []
+    current: BaseException | None = exception
+    while current is not None and len(chain) < 6:
+        own_code = type(current).__module__.startswith('backend.')
+        chain.append({'type': type(current).__name__,
+                      'message': str(current)[:200] if own_code else None})
+        current = current.__cause__ or current.__context__
+    return {'stage': progress.get('stage'),
+            'completed_segments': progress.get('completed_segments'),
+            'total_segments': progress.get('total_segments'),
+            'causes': chain}
+
+
+def run_ingestion_job(job_id: str, request: SubmitIngestionRequest, content: bytes, store: IngestionJobStore) -> None:
+    if not store.start(job_id):
+        return
+    try:
+        result = get_ingestion_service().ingest(filename=request.filename, content=content,
+            language=request.language, recorded_at=request.recorded_at,
+            progress=lambda payload: store.progress(job_id, payload))
+    except Exception as exception:
+        root = _root_exception(exception)
+        if isinstance(exception, UploadConflictError):
+            code, message = 'upload_conflict', '이미 등록된 파일 이름이거나 같은 내용의 파일입니다.'
+        elif isinstance(exception, InvalidUploadError):
+            code, message = 'invalid_upload', '파일 형식이나 인코딩을 확인해 주세요. TXT는 UTF-8이어야 합니다.'
+        else:
+            code = classify_exception(root)
+            job = store.get(job_id, request.session_id)
+            if job and job.progress.get('stage') == 'indexing' and code.startswith('model_'):
+                code = code.replace('model_', 'embedding_', 1)
+            if isinstance(exception, StorageError):
+                code = 'storage_error'
+            if code == 'model_call_failed':
+                code = 'ingestion_failed'
+            message = MESSAGES.get(code, '파일 처리 또는 인덱싱에 실패했습니다. 등록 상태를 확인한 뒤 다시 시도해 주세요.')
+        job = store.get(job_id, request.session_id)
+        store.finish(job_id, code=code, error=message, diagnostic=_failure_diagnostic(
+            exception, job.progress if job else {}))
+    else:
+        store.finish(job_id, result)
+
+
+@router.post('/memories/ingest/jobs', response_model=IngestionJob, status_code=202)
+def submit_ingestion_job(request: SubmitIngestionRequest, tasks: BackgroundTasks,
+                         store: IngestionJobStore = Depends(get_ingestion_job_store)) -> IngestionJob:
+    try:
+        content = b64decode(request.content_base64, validate=True)
+        safe_name = TranscriptIngestionService._validate_upload(request.filename, content)
+    except (Base64Error, ValueError, InvalidUploadError) as exception:
+        raise HTTPException(422, 'File format or UTF-8 encoding is invalid') from exception
+    try:
+        job = store.create(request.session_id, safe_name, sha256(content).hexdigest())
+    except sqlite3.IntegrityError as exception:
+        raise HTTPException(409, 'This session or file is already being processed') from exception
+    request = request.model_copy(update={'filename': safe_name, 'content_base64': ''})
+    tasks.add_task(run_ingestion_job, job.job_id, request, content, store)
+    return job
+
+
+@router.get('/memories/ingest/jobs/{job_id}', response_model=IngestionJob)
+def read_ingestion_job(job_id: str, session_id: str,
+                       store: IngestionJobStore = Depends(get_ingestion_job_store)) -> IngestionJob:
+    job = store.get(job_id, session_id)
+    if job is None:
+        raise HTTPException(404, 'Upload job was not found')
+    return job
 
 
 class MemoryView(BaseModel):
@@ -113,9 +209,11 @@ def _memory_view(
                 segment_id=source.segment_id,
                 start_offset=source.start_offset,
                 end_offset=source.end_offset,
-                start_line=_line_number(transcript.normalized_content, source.start_offset),
-                end_line=_line_number(
-                    transcript.normalized_content,
+                start_line=original_line_number(
+                    transcript.raw_content, transcript.normalized_content, source.start_offset,
+                ),
+                end_line=original_line_number(
+                    transcript.raw_content, transcript.normalized_content,
                     max(source.end_offset - 1, source.start_offset),
                 ),
             )
@@ -323,18 +421,22 @@ def get_ingestion_service() -> TranscriptIngestionService:
         settings.transcript_upload_directory,
         repository,
         build_openai_memory_model(
-            settings.openai_model,
-            api_key=settings.openai_api_key,
+            settings.chat_model,
+            api_key=settings.chat_api_key,
+            base_url=settings.chat_base_url,
         ),
         MemoryVectorIndex(
             repository,
-            settings.chroma_persist_directory,
-            embedding_model=settings.openai_embedding_model,
+            settings.embedding_index_directory,
+            embedding_model=settings.embedding_model,
+            embedding_provider=settings.embedding_provider,
+            embedding_base_url=settings.ollama_base_url,
             api_key=settings.openai_api_key,
         ),
         localization_model=build_openai_memory_localization_model(
-            settings.openai_model,
-            api_key=settings.openai_api_key,
+            settings.chat_model,
+            api_key=settings.chat_api_key,
+            base_url=settings.chat_base_url,
         ),
     )
 

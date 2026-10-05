@@ -1,6 +1,7 @@
 """Korean-friendly BM25 and reciprocal-rank-fusion retrieval."""
 
 from __future__ import annotations
+from backend.app.services.memory_text import memory_search_text
 
 import re
 import unicodedata
@@ -333,7 +334,7 @@ def tokenize_for_bm25(text: str) -> list[str]:
 
 
 def _memory_content(memory: MemoryRecord) -> str:
-    return f"{memory.title.strip()}\n{memory.summary.strip()}"
+    return memory_search_text(memory)
 
 
 def _content_hash(content: str) -> str:
