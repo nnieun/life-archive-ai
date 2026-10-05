@@ -60,6 +60,8 @@ class MemoryVectorIndex:
         *,
         embeddings: EmbeddingProvider | None = None,
         embedding_model: str = DEFAULT_EMBEDDING_MODEL,
+        embedding_provider: str = 'openai',
+        embedding_base_url: str = 'http://localhost:11434/v1',
         api_key: str | None = None,
         embedding_version: str | None = None,
         collection_name: str = DEFAULT_COLLECTION_NAME,
@@ -67,10 +69,15 @@ class MemoryVectorIndex:
         self._repository = repository
         self._persist_directory = Path(persist_directory)
         self._persist_directory.mkdir(parents=True, exist_ok=True)
-        self._embeddings = embeddings or create_openai_embeddings(
-            embedding_model,
-            api_key=api_key,
-        )
+        if embeddings is not None:
+            self._embeddings = embeddings
+        elif embedding_provider == 'ollama':
+            from backend.app.services.local_embeddings import OllamaEmbeddings
+            self._embeddings = OllamaEmbeddings(embedding_model, embedding_base_url)
+        elif embedding_provider == 'openai':
+            self._embeddings = create_openai_embeddings(embedding_model, api_key=api_key)
+        else:
+            raise ValueError('Unknown embedding provider')
         self._embedding_version = (
             embedding_version or f"{embedding_model}:v1"
         )

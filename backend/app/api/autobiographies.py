@@ -78,8 +78,10 @@ def get_autobiography_service() -> AutobiographyService:
     repository = SQLiteRepository(database)
     vector_index = MemoryVectorIndex(
         repository,
-        settings.chroma_persist_directory,
-        embedding_model=settings.openai_embedding_model,
+        settings.embedding_index_directory,
+        embedding_model=settings.embedding_model,
+        embedding_provider=settings.embedding_provider,
+        embedding_base_url=settings.ollama_base_url,
         api_key=settings.openai_api_key,
     )
     vector_index.sync_from_sqlite()
@@ -95,8 +97,9 @@ def get_autobiography_service() -> AutobiographyService:
         retriever,
         TimelineService(repository),
         build_openai_autobiography_models(
-            settings.openai_model,
-            api_key=settings.openai_api_key,
+            settings.chat_model,
+            api_key=settings.chat_api_key,
+            base_url=settings.chat_base_url,
         ),
     )
 

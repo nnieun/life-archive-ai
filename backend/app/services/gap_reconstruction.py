@@ -168,12 +168,15 @@ def build_openai_memory_gap_models(
     model_name: str = DEFAULT_OPENAI_MODEL,
     *,
     api_key: str | None = None,
+    base_url: str | None = None,
 ) -> MemoryGapModels:
     """Build actual OpenAI Tool Calling and strict candidate-output models."""
 
     model_kwargs: dict[str, object] = {"model": model_name}
     if api_key:
         model_kwargs["api_key"] = api_key
+    if base_url:
+        model_kwargs.update(base_url=base_url, timeout=300, max_retries=0, use_responses_api=False)
     model = ChatOpenAI(**model_kwargs)
     return MemoryGapModels(
         agent=model.bind_tools(

@@ -189,6 +189,12 @@ flowchart TD
     NEXT -- 아니요 --> COMPLETE[자서전 완성]
 ```
 
+## 로컬 생성 모델
+
+기본 생성 모델은 Ollama의 `gemma4:e2b`입니다. 설치와 환경 설정은
+[로컬 LLM 실행 안내](docs/LOCAL_LLM.md)를 참고하세요. 검색 임베딩은
+기존 OpenAI 모델을 유지하므로 API 키가 여전히 필요합니다.
+
 ## 설치
 
 Python 3.13과 Windows PowerShell을 기준으로 합니다.

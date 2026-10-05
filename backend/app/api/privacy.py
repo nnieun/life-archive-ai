@@ -36,8 +36,10 @@ def get_transcript_deletion_service() -> TranscriptDeletionService:
         repository,
         MemoryVectorIndex(
             repository,
-            settings.chroma_persist_directory,
-            embedding_model=settings.openai_embedding_model,
+            settings.embedding_index_directory,
+            embedding_model=settings.embedding_model,
+            embedding_provider=settings.embedding_provider,
+            embedding_base_url=settings.ollama_base_url,
             api_key=settings.openai_api_key,
         ),
         BM25MemoryIndex(repository),
