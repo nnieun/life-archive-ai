@@ -399,3 +399,30 @@ SQLite soft deletion이 먼저 commit되며, 관련 Chroma vector를 제거하�
 BM25를 rebuild한다. raw 원본은 삭제하지 않는다. transcript가 없으면
 `404`, 인덱스 정리가 실패하면 SQLite 삭제 상태를 유지하고 `503`을
 반환한다.
+# 비동기 대화 작업
+
+QA 결과의 `validation_result`에는 선택적 `failure_code`, `exception_type`이
+추가됩니다. 그래프 밖 실패 시 작업 응답의 `failure_code`, `failure_stage`를
+확인합니다. 기존 클라이언트 응답 필드는 유지합니다.
+
+- `POST /api/v1/chat/jobs`: 기존 chat 요청 형식으로 제출, 202와 작업 ID 반환
+- `GET /api/v1/chat/jobs/{job_id}?session_id=...`: 상태와 완료 결과 조회
+- 같은 세션의 진행 작업이 있으면 제출은 409, 작업/세션 불일치는 조회 404
+
+상세 동작은 [비동기 대화](ASYNC_CHAT.md)를 참고합니다.
+
+## QA 속도와 진행 정보
+
+업로드 백그라운드 API는 [비동기 업로드](ASYNC_UPLOAD.md)를 참고한다.
+`POST /memories/ingest/jobs` 접수(202), `GET /memories/ingest/jobs/{job_id}` 상태 조회를 제공한다.
+
+`QAResult`에는 `elapsed_ms`, `cache_hit`, `steps`가 추가된다.
+`steps`는 단계별 시간과 검증 결과이며 캐시 응답에서는 빈 목록이다.
+`elapsed_ms`는 QA 처리 시간으로, 큐 대기·서비스 최초 초기화·화면 폴링 시간은 별도다.
+
+작업 응답의 `progress`는 `stage`, `elapsed_ms`, `memories`를 제공한다.
+`memories`에는 검색된 기억 ID와 제목만 있고 검증 전 답변 초안은 없다.
+진행 정보 갱신은 작업 실행 중일 때만 허용하며 개인정보 삭제 시 진행 정보도 지운다.
+
+시간과 상태는 성공 여부와 관계없이 SQLite `qa_performance`에 기록한다.
+실패의 상세 진단과 별도이며 문답 내용은 성능 기록에 저장하지 않는다.

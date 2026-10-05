@@ -100,7 +100,10 @@ def test_external_service_failure_does_not_expose_details(
 
 
 def test_invalid_upload_and_model_validation_are_safe() -> None:
-    client = TestClient(create_app())
+    application = create_app()
+    service = Mock()
+    application.dependency_overrides[get_qa_service] = lambda: service
+    client = TestClient(application)
 
     invalid_file = client.post(
         "/api/v1/memories/ingest",
@@ -120,6 +123,7 @@ def test_invalid_upload_and_model_validation_are_safe() -> None:
 
     assert _assert_safe_error(invalid_file, 422)["code"] == "http_error"
     assert _assert_safe_error(invalid_model, 422)["code"] == "validation_error"
+    service.answer_question.assert_not_called()
 
 
 def test_unexpected_failure_hides_exception_message_and_path() -> None:

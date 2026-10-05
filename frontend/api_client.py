@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 DEFAULT_API_URL: Final = "http://127.0.0.1:8000/api/v1"
 DEFAULT_TIMEOUT_SECONDS: Final = 60.0
 INGEST_TIMEOUT_SECONDS: Final = 180.0
+CHAT_TIMEOUT_SECONDS: Final = 900.0
 
 
 class ApiModel(BaseModel):
@@ -138,6 +139,8 @@ class QAValidation(ApiModel):
     stage: str
     passed: bool
     reason: str
+    failure_code: str | None = None
+    exception_type: str | None = None
 
 
 class ChatResult(ApiModel):
@@ -149,6 +152,8 @@ class ChatResult(ApiModel):
     validation_result: QAValidation
     retry_count: int
     error: str | None = None
+    elapsed_ms: float = 0
+    cache_hit: bool = False
 
 
 class TimelineEvent(ApiModel):
@@ -202,6 +207,30 @@ class AutobiographyGapCheckResult(ApiModel):
     important_unresolved_gaps: list[MemoryGapData]
     retrieved_memory_ids: list[str]
     requires_gap_confirmation: bool
+
+
+class ChatJob(ApiModel):
+    job_id: str
+    session_id: str
+    status: Literal["queued", "running", "completed", "failed", "cancelled"]
+    created_at: datetime
+    result: ChatResult | None = None
+    error: str | None = None
+    failure_code: str | None = None
+    failure_stage: str | None = None
+    progress: dict = Field(default_factory=dict)
+
+
+class IngestionJob(ApiModel):
+    job_id: str
+    session_id: str
+    filename: str
+    created_at: datetime
+    status: Literal['queued', 'running', 'completed', 'failed', 'cancelled']
+    progress: dict = Field(default_factory=dict)
+    result: IngestionResult | None = None
+    error: str | None = None
+    failure_code: str | None = None
 
 
 class ApiClientError(RuntimeError):
@@ -286,6 +315,12 @@ class LifeArchiveApiClient:
                 return response_model.model_validate(response.json())
         except httpx.HTTPStatusError as exception:
             raise _api_error(exception.response, error_message) from exception
+        except httpx.TimeoutException as exception:
+            raise ApiClientError(
+                error_message,
+                error_code="request_timeout",
+                user_message="응답 대기 시간이 초과됐습니다. 모델 처리에 시간이 걸릴 수 있습니다. 잠시 후 다시 확인해 주세요.",
+            ) from exception
         except (httpx.HTTPError, ValueError, ValidationError) as exception:
             raise ApiClientError(error_message) from exception
 
@@ -323,6 +358,17 @@ class LifeArchiveApiClient:
                 json=payload,
             )
         )
+
+    def submit_ingestion_job(self, filename: str, content: bytes, *, session_id: str,
+                             language: str | None = None, recorded_at: datetime | None = None) -> IngestionJob:
+        return IngestionJob.model_validate(self._request('POST', 'memories/ingest/jobs', IngestionJob,
+            error_message='Upload submission failed', timeout_seconds=INGEST_TIMEOUT_SECONDS,
+            json={'session_id': session_id, 'filename': filename, 'content_base64': b64encode(content).decode('ascii'),
+                  'language': language, 'recorded_at': recorded_at.isoformat() if recorded_at else None}))
+
+    def get_ingestion_job(self, job_id: str, session_id: str) -> IngestionJob:
+        return IngestionJob.model_validate(self._request('GET', f'memories/ingest/jobs/{job_id}', IngestionJob,
+            error_message='Upload status lookup failed', params={'session_id': session_id}))
 
     def list_memories(self) -> list[MemoryView]:
         try:
@@ -427,7 +473,7 @@ class LifeArchiveApiClient:
         *,
         session_id: str,
         question: str,
-        top_k: int = 5,
+        top_k: int = 3,
     ) -> ChatResult:
         return ChatResult.model_validate(
             self._request(
@@ -435,6 +481,7 @@ class LifeArchiveApiClient:
                 "chat",
                 ChatResult,
                 error_message="Chat request failed",
+                timeout_seconds=CHAT_TIMEOUT_SECONDS,
                 json={
                     "session_id": session_id,
                     "question": question,
@@ -487,6 +534,18 @@ class LifeArchiveApiClient:
                 },
             )
         )
+
+    def submit_chat_job(self, *, session_id: str, question: str, top_k: int = 3) -> ChatJob:
+        return ChatJob.model_validate(self._request(
+            "POST", "chat/jobs", ChatJob, error_message="Chat submission failed",
+            json={"session_id": session_id, "question": question, "top_k": top_k},
+        ))
+
+    def get_chat_job(self, job_id: str, session_id: str) -> ChatJob:
+        return ChatJob.model_validate(self._request(
+            "GET", f"chat/jobs/{job_id}", ChatJob, error_message="Chat status lookup failed",
+            params={"session_id": session_id},
+        ))
 
     def check_autobiography_gaps(
         self,

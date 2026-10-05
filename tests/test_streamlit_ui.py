@@ -13,7 +13,9 @@ from frontend.api_client import (
     AutobiographyGapCheckResult,
     AutobiographyResult,
     ChatResult,
+    ChatJob,
     IngestionResult,
+    IngestionJob,
     MemoryGapView,
     MemoryView,
     TimelineResult,
@@ -93,7 +95,7 @@ def test_service_failure_shows_request_id_without_private_detail(
 def test_txt_upload_displays_processing_and_index_result(
     api_client: Mock,
 ) -> None:
-    api_client.ingest_transcript.return_value = IngestionResult(
+    result = IngestionResult(
         transcript_id="tr_upload",
         filename="memory.txt",
         segment_count=2,
@@ -102,6 +104,10 @@ def test_txt_upload_displays_processing_and_index_result(
         indexed_memory_count=1,
         memory_ids=["mem_001"],
     )
+    api_client.submit_ingestion_job.return_value = IngestionJob(job_id='job_upload', session_id='upload',
+        filename='memory.txt', status='queued', created_at='2026-10-05T00:00:00Z')
+    api_client.get_ingestion_job.return_value = IngestionJob(job_id='job_upload', session_id='upload',
+        filename='memory.txt', status='completed', created_at='2026-10-05T00:00:00Z', result=result)
     app = AppTest.from_file(_page_path("upload.py")).run()
 
     app.file_uploader[0].upload(
@@ -111,7 +117,13 @@ def test_txt_upload_displays_processing_and_index_result(
     ).run()
     app.button[0].click().run()
 
-    assert api_client.ingest_transcript.call_args.args[0] == "memory.txt"
+    assert api_client.submit_ingestion_job.call_args.args[0] == "memory.txt"
+    from frontend.upload_background import collect_upload_result
+    state = app.session_state.filtered_state
+    assert collect_upload_result(state, api_client)
+    app.session_state['last_upload_job'] = state['last_upload_job']
+    del app.session_state['pending_upload_job']
+    app.run()
     assert len(app.success) == 1
     assert "1개의 기억" in app.success[0].value
     assert any("기억에서 확인이 필요한 빈칸 2개" in item.value for item in app.warning)
@@ -120,7 +132,7 @@ def test_txt_upload_displays_processing_and_index_result(
 def test_duplicate_txt_upload_shows_conflict_message(
     api_client: Mock,
 ) -> None:
-    api_client.ingest_transcript.side_effect = ApiClientError(
+    api_client.submit_ingestion_job.side_effect = ApiClientError(
         "conflict",
         status_code=409,
     )
@@ -237,14 +249,36 @@ def test_chat_displays_answer_and_citation(api_client: Mock) -> None:
             "retry_count": 0,
         }
     )
+    from frontend.chat_background import collect_chat_result
+    api_client.submit_chat_job.return_value = ChatJob(
+        job_id="job_ui", session_id="session_ui", status="queued", created_at="2026-10-05T00:00:00Z")
+    api_client.get_chat_job.return_value = ChatJob(
+        job_id="job_ui", session_id="session_ui", status="completed", created_at="2026-10-05T00:00:00Z",
+        result=api_client.chat.return_value)
     app = AppTest.from_file(_page_path("chat.py")).run()
 
     app.chat_input[0].set_value("어디에서 만났어?").run()
+    assert app.chat_input[0].disabled
+    state = dict(app.session_state.filtered_state)
+    collect_chat_result(state, api_client)
+    del app.session_state["pending_chat_job"]
+    for key, value in state.items():
+        app.session_state[key] = value
+    app.run()
 
     assert "공원에서 만났습니다." in str(app)
     assert any("첫 만남" in button.label for button in app.button)
     assert _has_memory_citation_button(app, "mem_001")
+    api_client.submit_chat_job.return_value.job_id = "job_ui_second"
+    api_client.get_chat_job.return_value.job_id = "job_ui_second"
     app.chat_input[0].set_value("그 기억을 다시 알려줘").run()
+    assert app.chat_input[0].disabled
+    state = dict(app.session_state.filtered_state)
+    collect_chat_result(state, api_client)
+    del app.session_state["pending_chat_job"]
+    for key, value in state.items():
+        app.session_state[key] = value
+    app.run()
     assert not app.exception
     citation_keys = [button.key for button in app.button
                      if button.key and button.key.startswith("open-memory-")]

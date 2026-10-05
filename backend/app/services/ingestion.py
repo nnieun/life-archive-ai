@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
 from uuid import uuid4
+from collections.abc import Callable
 
 from backend.app.models.ingestion import IngestionResult
 from backend.app.models.transcript import TranscriptLoadRequest
@@ -66,6 +67,7 @@ class TranscriptIngestionService:
         content: bytes,
         language: str | None = None,
         recorded_at: datetime | None = None,
+        progress: Callable[[dict], None] | None = None,
     ) -> IngestionResult:
         """Persist a new raw file, extract memories, and refresh Chroma."""
 
@@ -109,6 +111,8 @@ class TranscriptIngestionService:
         transcript_id: str | None = None
         indexed_memory_ids: list[str] = []
         try:
+            if progress:
+                progress({'stage': 'loading'})
             loaded = TranscriptLoader(
                 self._transcript_root,
                 known_content_hashes=known_hashes,
@@ -148,12 +152,17 @@ class TranscriptIngestionService:
             )
             self._repository.create_transcript(loaded)
             transcript_id = loaded.transcript_id
+            if progress:
+                progress({'stage': 'chunking', 'transcript_id': transcript_id})
             chunks = chunk_and_store_transcript(
                 self._repository,
                 loaded.transcript_id,
             )
             memories = []
-            for chunk in chunks:
+            for chunk_index, chunk in enumerate(chunks):
+                if progress:
+                    progress({'stage': 'extracting', 'transcript_id': transcript_id,
+                              'completed_segments': chunk_index, 'total_segments': len(chunks)})
                 memories.extend(
                     extract_and_store_segment(
                         self._repository,
@@ -162,12 +171,18 @@ class TranscriptIngestionService:
                         localization_model=self._localization_model,
                     )
                 )
+            if progress:
+                progress({'stage': 'gaps', 'transcript_id': transcript_id, 'memory_count': len(memories)})
             gaps = self._gap_detector.detect_for_memories(memories)
             try:
                 # Failed batches may have persisted vectors; register all IDs
                 # before attempting writes so rollback also removes those.
                 indexed_memory_ids.extend(memory.memory_id for memory in memories)
+                if progress:
+                    progress({'stage': 'indexing', 'transcript_id': transcript_id, 'memory_count': len(memories)})
                 index_results = self._vector_index.index_memories(indexed_memory_ids)
+                if progress:
+                    progress({'stage': 'completed', 'transcript_id': transcript_id})
             except Exception as exception:
                 raise IngestionError("Memory index update failed") from exception
         except TranscriptLoadError as exception:

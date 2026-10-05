@@ -10,5 +10,7 @@ def clear_derived_state(state: MutableMapping[str, Any]) -> None:
         "chat_messages", "chat_session_id", "selected_memory_id",
         "pending_autobiography", "pending_autobiography_gap_count",
         "autobiography-unresolved-confirm",
+        "pending_chat_job", "chat_completion_notice",
+        "last_upload_job", "upload_completion_notice",
     ):
         state.pop(key, None)

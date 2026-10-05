@@ -1,17 +1,64 @@
 """Streamlit API client tests without a live backend."""
 
 from base64 import b64decode
+import json
 
 import httpx
 import pytest
 
 from frontend.api_client import (
+    CHAT_TIMEOUT_SECONDS,
     INGEST_TIMEOUT_SECONDS,
     ApiClientError,
     LifeArchiveApiClient,
     MemoryGapReconstructionResult,
     TranscriptDeletionResult,
 )
+
+
+def test_chat_waits_for_multistage_local_generation():
+    def handler(request):
+        assert request.extensions["timeout"]["read"] == CHAT_TIMEOUT_SECONDS
+        return httpx.Response(503)
+
+    client = LifeArchiveApiClient(transport=httpx.MockTransport(handler))
+    with pytest.raises(ApiClientError):
+        client.chat(session_id="test", question="synthetic question")
+
+
+def test_chat_clients_default_to_three_memories():
+    requests = []
+
+    def handler(request):
+        requests.append(json.loads(request.content))
+        if request.url.path.endswith('/jobs'):
+            return httpx.Response(202, json={
+                'job_id': 'job', 'session_id': 's', 'status': 'queued',
+                'created_at': '2026-10-05T00:00:00Z',
+            })
+        return httpx.Response(200, json={
+            'session_id': 's', 'question': 'q', 'retrieved_memory_ids': [],
+            'final_answer': 'answer', 'citations': [],
+            'validation_result': {'stage': 'answer', 'passed': True, 'reason': 'ok'},
+            'retry_count': 0,
+        })
+
+    client = LifeArchiveApiClient(transport=httpx.MockTransport(handler))
+    client.chat(session_id='s', question='q')
+    client.submit_chat_job(session_id='s', question='q')
+    assert [request['top_k'] for request in requests] == [3, 3]
+
+
+def test_timeout_is_distinct_from_backend_connection_failure():
+    def handler(request):
+        raise httpx.ReadTimeout("private detail", request=request)
+
+    client = LifeArchiveApiClient(transport=httpx.MockTransport(handler))
+    with pytest.raises(ApiClientError) as captured:
+        client.chat(session_id="test", question="synthetic question")
+    assert captured.value.error_code == "request_timeout"
+    assert "대기 시간" in captured.value.user_message
+    assert "private detail" not in captured.value.user_message
 
 
 def test_health_client_parses_response() -> None:
@@ -29,6 +76,26 @@ def test_health_client_parses_response() -> None:
     client = LifeArchiveApiClient(transport=httpx.MockTransport(handler))
 
     assert client.get_health().status == "ok"
+
+
+def test_background_upload_client_sends_original_bytes_and_scopes_polling():
+    import json
+    def handler(request):
+        if request.method == 'POST':
+            assert request.url.path == '/api/v1/memories/ingest/jobs'
+            payload = json.loads(request.content)
+            assert b64decode(payload['content_base64']) == b'original bytes'
+            assert payload['session_id'] == 's'
+            status = 'queued'
+        else:
+            assert request.url.path == '/api/v1/memories/ingest/jobs/j'
+            assert request.url.params['session_id'] == 's'
+            status = 'running'
+        return httpx.Response(202 if request.method == 'POST' else 200,
+            json={'job_id': 'j', 'session_id': 's', 'filename': 'demo.txt', 'created_at': '2026-10-05T00:00:00Z', 'status': status})
+    client = LifeArchiveApiClient(transport=httpx.MockTransport(handler))
+    assert client.submit_ingestion_job('demo.txt', b'original bytes', session_id='s').status == 'queued'
+    assert client.get_ingestion_job('j', 's').status == 'running'
 
 
 def test_health_client_returns_safe_error() -> None:

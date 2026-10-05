@@ -51,6 +51,11 @@ EXPECTED_TABLES = {
     "memory_gap_candidates",
     "conversation_sessions",
     "conversation_messages",
+    "qa_failure_diagnostics",
+    "chat_jobs",
+    "ingestion_jobs",
+    "qa_answer_cache",
+    "qa_performance",
     "autobiographies",
 }
 

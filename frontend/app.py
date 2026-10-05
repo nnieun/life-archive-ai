@@ -25,4 +25,8 @@ navigation = st.navigation(
         ),
     ]
 )
+from frontend.chat_background import chat_job_notifications
+chat_job_notifications()
+from frontend.upload_background import upload_job_notifications
+upload_job_notifications()
 navigation.run()

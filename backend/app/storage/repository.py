@@ -19,6 +19,7 @@ from backend.app.models.gap import (
 from backend.app.models.transcript import LoadedTranscript
 from backend.app.models.privacy import SQLiteTranscriptDeletion
 from backend.app.storage.database import SQLiteDatabase
+from backend.app.models.qa_diagnostics import QAFailureDiagnostic
 from backend.app.storage.models import (
     AutobiographyContent,
     AutobiographyCreate,
@@ -360,6 +361,9 @@ class SQLiteRepository:
             if transcript is None:
                 raise StorageNotFoundError("Transcript was not found")
 
+            connection.execute("UPDATE ingestion_jobs SET status='cancelled',result_json=NULL,progress_json=NULL,error=?,failure_code='transcript_deleted' WHERE transcript_id=?",
+                               ('원본 기록이 삭제되어 업로드 결과를 제공하지 않습니다.', transcript_id))
+
             memory_rows = connection.execute(
                 "SELECT memory_id, status FROM memories "
                 "WHERE transcript_id = ? ORDER BY memory_id",
@@ -367,6 +371,34 @@ class SQLiteRepository:
             ).fetchall()
             memory_ids = [str(row["memory_id"]) for row in memory_rows]
             memory_id_set = set(memory_ids)
+            # Discard pending jobs and saved results on privacy deletion. A
+            # running worker cannot publish a result after cancellation.
+            connection.execute(
+                "UPDATE chat_jobs SET status='cancelled', result_json=NULL, progress_json=NULL, error=NULL "
+                "WHERE status IN ('queued','running')"
+            )
+            job_rows = connection.execute(
+                "SELECT job_id, result_json FROM chat_jobs WHERE result_json IS NOT NULL"
+            ).fetchall()
+            for job_row in job_rows:
+                payload = json.loads(job_row["result_json"])
+                referenced = set(payload.get("retrieved_memory_ids", []))
+                referenced.update(citation["memory_id"] for citation in payload.get("citations", []))
+                if referenced & memory_id_set:
+                    connection.execute("UPDATE chat_jobs SET status='cancelled', result_json=NULL, progress_json=NULL, error=NULL WHERE job_id=?",
+                                       (job_row["job_id"],))
+            failure_rows = connection.execute(
+                "SELECT diagnostic_id, payload_json FROM qa_failure_diagnostics"
+            ).fetchall()
+            for row in failure_rows:
+                failure = QAFailureDiagnostic.model_validate_json(row["payload_json"])
+                if memory_id_set.intersection(
+                    failure.retrieved_memory_ids + failure.selected_memory_ids
+                ):
+                    connection.execute(
+                        "DELETE FROM qa_failure_diagnostics WHERE diagnostic_id = ?",
+                        (row["diagnostic_id"],),
+                    )
 
             message_ids = [
                 str(row["message_id"])
@@ -1395,6 +1427,11 @@ class SQLiteRepository:
     def soft_delete_conversation_message(self, message_id: str) -> bool:
         timestamp = _now_iso()
         with self._database.transaction() as connection:
+            connection.execute('DELETE FROM qa_answer_cache WHERE session_id IN (SELECT session_id FROM conversation_messages WHERE message_id=?)', (message_id,))
+            connection.execute(
+                "DELETE FROM qa_failure_diagnostics WHERE user_message_id = ?",
+                (message_id,),
+            )
             cursor = connection.execute(
                 "UPDATE conversation_messages SET deleted_at = ?, updated_at = ? "
                 "WHERE message_id = ? AND deleted_at IS NULL",
@@ -1405,12 +1442,42 @@ class SQLiteRepository:
     def soft_delete_conversation_session(self, session_id: str) -> bool:
         timestamp = _now_iso()
         with self._database.transaction() as connection:
+            connection.execute('DELETE FROM qa_answer_cache WHERE session_id=?', (session_id,))
+            connection.execute('DELETE FROM qa_performance WHERE session_id=?', (session_id,))
+            connection.execute("UPDATE chat_jobs SET status='cancelled', result_json=NULL, progress_json=NULL, error=NULL WHERE session_id=?",
+                               (session_id,))
+            connection.execute(
+                "DELETE FROM qa_failure_diagnostics WHERE session_id = ?", (session_id,)
+            )
             cursor = connection.execute(
                 "UPDATE conversation_sessions SET deleted_at = ?, updated_at = ? "
                 "WHERE session_id = ? AND deleted_at IS NULL",
                 (timestamp, timestamp, session_id),
             )
         return cursor.rowcount == 1
+
+    def save_qa_failure(self, failure: QAFailureDiagnostic) -> None:
+        """Persist failure-only diagnostics alongside the existing conversation."""
+        try:
+            with self._database.transaction() as connection:
+                connection.execute(
+                    "INSERT INTO qa_failure_diagnostics VALUES (?, ?, ?, ?, ?)",
+                    (failure.diagnostic_id, failure.session_id, failure.user_message_id,
+                     failure.created_at.isoformat(), failure.model_dump_json()),
+                )
+        except sqlite3.Error as exception:
+            raise StorageError("QA failure diagnostics could not be saved") from exception
+
+    def list_qa_failures(self, session_id: str) -> list[QAFailureDiagnostic]:
+        with self._database.transaction() as connection:
+            rows = connection.execute(
+                "SELECT d.payload_json FROM qa_failure_diagnostics d "
+                "JOIN conversation_sessions s ON s.session_id = d.session_id "
+                "JOIN conversation_messages m ON m.message_id = d.user_message_id "
+                "WHERE d.session_id = ? AND s.deleted_at IS NULL AND m.deleted_at IS NULL "
+                "ORDER BY d.created_at, d.diagnostic_id", (session_id,),
+            ).fetchall()
+        return [QAFailureDiagnostic.model_validate_json(row["payload_json"]) for row in rows]
 
     def create_autobiography(
         self,
