@@ -71,11 +71,14 @@ def build_openai_memory_model(
     model_name: str = DEFAULT_OPENAI_MODEL,
     *,
     api_key: str | None = None,
+    base_url: str | None = None,
 ) -> StructuredMemoryModel:
     """Configure OpenAI native Structured Outputs through LangChain."""
     model_kwargs: dict[str, object] = {"model": model_name, "temperature": 0}
     if api_key:
         model_kwargs["api_key"] = api_key
+    if base_url:
+        model_kwargs.update(base_url=base_url, timeout=300, max_retries=0, use_responses_api=False)
     model = ChatOpenAI(**model_kwargs)
     return model.with_structured_output(
         MemoryExtractionProposalBatch,
@@ -89,12 +92,15 @@ def build_openai_memory_localization_model(
     model_name: str = DEFAULT_OPENAI_MODEL,
     *,
     api_key: str | None = None,
+    base_url: str | None = None,
 ) -> StructuredMemoryModel:
     """Configure a separate schema that cannot modify evidence or dates."""
 
     model_kwargs: dict[str, object] = {"model": model_name, "temperature": 0}
     if api_key:
         model_kwargs["api_key"] = api_key
+    if base_url:
+        model_kwargs.update(base_url=base_url, timeout=300, max_retries=0, use_responses_api=False)
     model = ChatOpenAI(**model_kwargs)
     return model.with_structured_output(
         MemoryLocalizationBatch,
@@ -497,6 +503,51 @@ def _stable_id(prefix: str, values: Sequence[object]) -> str:
     return f"{prefix}_{hashlib.sha256(identity).hexdigest()[:24]}"
 
 
+_NAME_PREFIX_STOPWORDS = frozenset({"우리", "그", "내", "이", "저", "큰", "작은", "새", "친한", "외", "옆집", "그냥"})
+
+
+_BARE_RELATIONS = frozenset({"오빠", "언니", "누나", "형", "동생", "삼촌", "이모", "고모"})
+
+
+def _canonical_people(people: list[str], transcript_text: str) -> list[str]:
+    """Expand a bare kinship term to the full name the transcript uses elsewhere.
+
+    Segments are extracted independently, so "오빠" in a segment that never
+    repeats the name would lose "영수". When the whole transcript names that
+    person in exactly one way, use that full name.
+    """
+
+    result: list[str] = []
+    for person in people:
+        if person not in _BARE_RELATIONS:
+            if person not in result:
+                result.append(person)
+            continue
+        prefixes = {
+            match.group(1)
+            for match in re.finditer(rf"([가-힣]{{2,3}}) {re.escape(person)}", transcript_text)
+            if match.group(1) not in _NAME_PREFIX_STOPWORDS
+        }
+        expanded = f"{next(iter(prefixes))} {person}" if len(prefixes) == 1 else person
+        if expanded not in result:
+            result.append(expanded)
+    return [person for person in result
+            if not any(other != person and other.endswith(f" {person}") for other in result)]
+
+
+def _year_is_supported(event_date: str, transcript_text: str) -> bool:
+    """A year the transcript never states (e.g. "2024" for "3월 2일") is invented."""
+
+    year = event_date[:4]
+    return year in transcript_text or f"{year[2:]}년" in transcript_text
+
+
+def _drop_unsupported_year(candidate: ExtractedMemory, transcript_text: str) -> ExtractedMemory:
+    if candidate.event_date is None or _year_is_supported(candidate.event_date, transcript_text):
+        return candidate
+    return candidate.model_copy(update={"event_date": None, "date_precision": DatePrecision.UNKNOWN})
+
+
 def _storage_items(
     batch: MemoryModelBatch,
     segment: TranscriptSegmentRecord,
@@ -539,6 +590,16 @@ def _storage_items(
         raise MemoryExtractionOutputError(
             "Model returned conflicting event dates for the same evidence"
         )
+    transcript = repository.get_transcript(segment.transcript_id)
+    if transcript is not None:
+        candidates = [
+            _drop_unsupported_year(
+                candidate.model_copy(update={"people": _canonical_people(candidate.people, transcript.normalized_content)}),
+                transcript.normalized_content,
+            )
+            for candidate in candidates
+        ]
+
 
     items: list[tuple[MemoryCreate, MemorySourceCreate]] = []
     seen_memory_ids: set[str] = set()

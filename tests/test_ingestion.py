@@ -165,6 +165,8 @@ def test_txt_upload_is_immutable_and_indexes_extracted_memory(
     )
 
     assert (raw_root / "memory.txt").read_bytes() == original
+
+
     assert result.segment_count == 1
     assert result.memory_count == 1
     assert result.gap_count == 0
@@ -172,6 +174,29 @@ def test_txt_upload_is_immutable_and_indexes_extracted_memory(
     assert vector_index.memory_ids == result.memory_ids
     assert repository.get_transcript(result.transcript_id) is not None
     assert len(repository.list_memories(result.transcript_id)) == 1
+
+
+def test_background_upload_tracks_real_ingestion_and_erases_deleted_results(ingestion_storage, monkeypatch):
+    from backend.app.api import memories
+    from backend.app.services.ingestion_jobs import IngestionJobStore, IngestionJobCancelled
+    service, repository, vector_index, raw_root = ingestion_storage
+    store = IngestionJobStore(repository._database)
+    job = store.create('upload', 'background.txt', 'synthetic_hash')
+    monkeypatch.setattr(memories, 'get_ingestion_service', lambda: service)
+    original = '친구와 공원에서 만났다.'.encode('utf-8')
+    request = memories.SubmitIngestionRequest(session_id='upload', filename='background.txt', content_base64='x')
+    memories.run_ingestion_job(job.job_id, request, original, store)
+    completed = store.get(job.job_id, 'upload')
+    assert completed.status == 'completed' and completed.result.indexed_memory_count == 1
+    assert completed.progress['stage'] == 'completed'
+    assert (raw_root / 'background.txt').read_bytes() == original
+    repository.soft_delete_transcript_cascade(completed.result.transcript_id)
+    erased = store.get(job.job_id, 'upload')
+    assert erased.status == 'cancelled' and erased.result is None and erased.progress == {}
+    store.finish(job.job_id, completed.result)
+    assert store.get(job.job_id, 'upload').result is None
+    with pytest.raises(IngestionJobCancelled):
+        store.progress(job.job_id, {'stage': 'late'})
 
 
 def test_upload_detects_gap_and_returns_gap_ids(tmp_path: Path) -> None:
@@ -399,3 +424,22 @@ def test_ingest_api_decodes_original_bytes_before_calling_service() -> None:
 
     assert response.status_code == 200
     assert service.ingest.call_args.kwargs["content"] == b"original\r\nbytes"
+
+
+def test_canonical_people_expands_bare_relation_from_whole_transcript():
+    from backend.app.services.memory_extraction import _canonical_people
+    text = "영수 오빠한테 연락 옴.\n오빠네 집이 넓었다. 우리 엄마가 웃었다. 영수 오빠랑 먹었다"
+    assert _canonical_people(["오빠", "엄마", "민지"], text) == ["영수 오빠", "엄마", "민지"]
+    assert _canonical_people(["오빠"], "철수 오빠와 영수 오빠가 있었다") == ["오빠"]
+
+
+def test_canonical_people_drops_bare_relation_when_full_name_present():
+    from backend.app.services.memory_extraction import _canonical_people
+    assert _canonical_people(["오빠", "영수 오빠", "올케언니"], "영수 오빠") == ["영수 오빠", "올케언니"]
+
+
+def test_year_not_stated_in_transcript_is_dropped():
+    from backend.app.services.memory_extraction import _year_is_supported
+    assert not _year_is_supported("2024-03-02", "3월 2일 토요일 흐림\n운동회 때 넘어졌다")
+    assert _year_is_supported("1957-09-08", "1957년 9월 8일에 태어났다")
+    assert _year_is_supported("1985", "85년인가 86년인가 헷갈림")
